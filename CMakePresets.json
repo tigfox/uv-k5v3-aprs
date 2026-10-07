@@ -159,6 +159,22 @@
             }
         },
         {
+            "name": "APRS",
+            "inherits": "Fusion",
+            "cacheVariables": {
+                "ENABLE_APRS": true,
+                "ENABLE_US_2M_70CM_ONLY": true,
+                "ENABLE_APRS_MENU_ONLY": true,
+                "ENABLE_SPECTRUM": false,
+                "ENABLE_FEAT_F4HWN_SPECTRUM": false,
+                "ENABLE_FMRADIO": false,
+                "ENABLE_VOICE": false,
+                "ENABLE_FEAT_F4HWN_FULL_WATCH": false,
+                "EDITION_STRING": "APRS",
+                "TARGET": "f4hwn.aprs"
+            }
+        },
+        {
             "name": "FieldOps",
             "inherits": "Fusion",
             "cacheVariables": {
@@ -224,6 +240,10 @@
         {
             "name": "Fusion",
             "configurePreset": "Fusion"
+        },
+        {
+            "name": "APRS",
+            "configurePreset": "APRS"
         },
         {
             "name": "Transfer",

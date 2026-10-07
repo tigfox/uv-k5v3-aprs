@@ -79,6 +79,13 @@ static const AddrMapping_t ADDR_MAPPINGS[] = {
                                                 // [0x08..0x407] 128x64 monochrome bitmap, 1024 Bytes
                                                 // ST7565-native: 8 pages * 128 columns, column-major LSB-top
 
+#ifdef ENABLE_APRS
+    // APRS station record (96 B, see app/aprs_settings.h). Above the bank
+    // boundary (0x010000) so it is shared by every config bank. Free area of
+    // the SPI flash map: after the boot logo, before multiboot slot 0.
+    _MK_MAPPING(0x012000, 0x00D000, 0x00D060),
+#endif
+
     // Not mapped, for documentation only (the EEPROM API uses 16-bit
     // addresses and could not reach a 32 KB window anyway):
     //
