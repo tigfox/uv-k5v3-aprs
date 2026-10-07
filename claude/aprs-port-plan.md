@@ -5,7 +5,7 @@ Started 2026-10-07. Re-implements the ta1js APRS digipeater work
 the record of what was built and decided there) on armel's PY32F071 firmware
 (`armel/uv-k1-k5v3-firmware-custom`, upstream HEAD `523ef042`, v6.1.0).
 
-**Status: step 0 partly done (2026-10-07).** Branch `aprs` created; baseline images and hashes saved in `claude/baseline/` (`claude/baseline/check.sh` is the guard). Still open in step 0: fork + remote (no `gh` installed), calibration backup, DFU/multiboot recovery check (all need the user).
+**Status: step 0 partly done (2026-10-07).** Branch `aprs` created; baseline images and hashes saved in `claude/baseline/` (`claude/baseline/check.sh` is the guard). Step 0 complete: fork `tigfox/uv-k5v3-aprs` is `origin` (armel is `upstream`), calibration backed up, DFU works, stock Fusion v6.1.0 is saved in multiboot **slot 1** (recovery: hold MENU at power-on, restore slot 1).
 
 ## Decisions (2026-10-07)
 
@@ -241,6 +241,17 @@ host-testable, then the code, then a code review, then a commit on the fork bran
    (`0x0708`) for hand-built frames: `WIDE2-2`, full 8-hop path, own call, duplicates.
 4. **Recovery:** multiboot main slot + DFU mode via UV Studio; calibration backup taken
    before the first experimental flash.
+
+## Multiboot findings (step 0, from `mb_flash.c` / `ui/multiboot.c`)
+
+- Slot 0 (Main) is firmware-managed and cannot be written from the host, **but a normal
+  flash of a different build is adopted as Main at the next boot**, erasing the old Main.
+  Main is therefore not a safe place for the known-good image. Slot 1 holds stock Fusion
+  v6.1.0 for recovery.
+- A build that crashes before `main.c` resolves the boot state is never adopted.
+- Slots are 128 KiB each; the 118 KiB flash limit keeps every image inside.
+- Config banks follow slots: settings and the APRS-record decision (global, not per bank)
+  need checking against `MB_BankBase` in step 1.
 
 ## Risks
 
