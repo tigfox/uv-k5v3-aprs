@@ -173,8 +173,7 @@ int32_t TX_freq_check(const uint32_t Frequency)
     // APRS build: TX only inside the US 2 m / 70 cm windows, whatever F Lock
     // says (RX_freq_check has already confined Frequency to them).
     return gSetting_F_LOCK == F_LOCK_ALL ? -1 : 0;
-#endif
-
+#else
     switch (gSetting_F_LOCK)
     {
         case F_LOCK_DEF:
@@ -276,6 +275,8 @@ int32_t TX_freq_check(const uint32_t Frequency)
                     return 0;
             break;
     }
+
+#endif
 
     // dis-allowed TX frequency
     return -1;

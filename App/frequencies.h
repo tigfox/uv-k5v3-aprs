@@ -89,6 +89,14 @@ STEP_Setting_t   FREQUENCY_GetStepIdxFromSortedIdx(uint8_t sortedIdx);
 uint32_t         FREQUENCY_GetSortedIdxFromStepIdx(uint8_t step);
 
 int32_t          TX_freq_check(uint32_t Frequency);
+
+// Whether a failed TX_freq_check blocks TX on this VFO. Upstream lets a per-channel
+// TX_LOCK flag opt out; the APRS build has a hard band limit, so it always applies.
+#ifdef ENABLE_US_2M_70CM_ONLY
+    #define TX_LOCK_APPLIES(vfo) (((void)(vfo), true))
+#else
+    #define TX_LOCK_APPLIES(vfo) ((vfo)->TX_LOCK)
+#endif
 int32_t          RX_freq_check(uint32_t Frequency);
 
 #endif

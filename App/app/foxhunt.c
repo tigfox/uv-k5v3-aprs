@@ -819,7 +819,7 @@ static void FOXHUNT_EnterHunt(void)
 // to the main display (VfoStateStr).
 static VfoState_t FOXHUNT_TxState(void)
 {
-    if (TX_freq_check(gTxVfo->pTX->Frequency) != 0 && gTxVfo->TX_LOCK)
+    if (TX_freq_check(gTxVfo->pTX->Frequency) != 0 && TX_LOCK_APPLIES(gTxVfo))
         return VFO_STATE_TX_DISABLE;
     if (gBatteryDisplayLevel == 0)
         return VFO_STATE_BAT_LOW;

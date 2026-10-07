@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include "app/aprs_settings.h"
 
-#define APRS_EEPROM_ADDR 0x00D000u   /* must match driver/eeprom_compat.c */
+#define APRS_EEPROM_ADDR 0x00D000u   /* EEPROM address; driver/eeprom_compat.c maps it to SPI 0x012000 */
 
 extern aprs_settings_t gAprsSettings;
 

@@ -1245,7 +1245,7 @@ void RADIO_PrepareTX(void)
 
     if(TX_freq_check(gCurrentVfo->pTX->Frequency) != 0
 #ifdef ENABLE_FEAT_F4HWN
-        && gCurrentVfo->TX_LOCK == true
+        && TX_LOCK_APPLIES(gCurrentVfo) == true
 #endif
     ){
         // TX frequency not allowed

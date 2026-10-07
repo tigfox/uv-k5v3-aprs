@@ -488,7 +488,7 @@ static void app_battery_sample(void)
 /* ---- v2 TX (beacon) ---- */
 static uint8_t app_tx_state(void)
 {
-    if (TX_freq_check(gTxVfo->pTX->Frequency) != 0 && gTxVfo->TX_LOCK) return 1; /* TX disable */
+    if (TX_freq_check(gTxVfo->pTX->Frequency) != 0 && TX_LOCK_APPLIES(gTxVfo)) return 1; /* TX disable */
     if (gBatteryDisplayLevel == 0) return 2;  /* battery low */
     if (gBatteryDisplayLevel > 6)  return 3;  /* voltage high */
     if (gTxVfo->Modulation != MODULATION_FM) return 1;

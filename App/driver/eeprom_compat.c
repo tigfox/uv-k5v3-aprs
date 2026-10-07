@@ -25,6 +25,9 @@
 #include "driver/eeprom.h"
 #include "driver/py25q16.h"
 #include <string.h>
+#ifdef ENABLE_APRS
+    #include "app/aprs_store.h"
+#endif
 
 #define HOLE_ADDR 0x1000000
 
@@ -83,7 +86,7 @@ static const AddrMapping_t ADDR_MAPPINGS[] = {
     // APRS station record (96 B, see app/aprs_settings.h). Above the bank
     // boundary (0x010000) so it is shared by every config bank. Free area of
     // the SPI flash map: after the boot logo, before multiboot slot 0.
-    _MK_MAPPING(0x012000, 0x00D000, 0x00D060),
+    _MK_MAPPING(0x012000, APRS_EEPROM_ADDR, APRS_EEPROM_ADDR + APRS_RECORD_SIZE),
 #endif
 
     // Not mapped, for documentation only (the EEPROM API uses 16-bit

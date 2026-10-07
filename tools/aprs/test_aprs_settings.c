@@ -101,8 +101,20 @@ static void test_validation(void)
     CHECK(!APRS_SettingsValid(NULL));
 }
 
+static void test_stale_bytes(void)
+{
+    /* Bytes after the NUL must not reach the record, so equal settings encode equally. */
+    aprs_settings_t a = sample(), b = sample();
+    uint8_t ra[APRS_RECORD_SIZE], rb[APRS_RECORD_SIZE];
+    strcpy(a.comment, "hello"); memset(a.comment + 6, 'z', 20);
+    strcpy(b.comment, "hello");
+    CHECK(APRS_SettingsEncode(&a, ra) && APRS_SettingsEncode(&b, rb));
+    CHECK(memcmp(ra, rb, sizeof ra) == 0);
+}
+
 int main(void)
 {
+    test_stale_bytes();
     test_defaults(); test_roundtrip(); test_digi_byte(); test_blank_and_corrupt(); test_validation();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;

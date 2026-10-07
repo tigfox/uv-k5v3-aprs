@@ -286,6 +286,18 @@ host-testable, then the code, then a code review, then a commit on the fork bran
 - Squelch above 0 if squelch is used for busy detection.
 - Auto-beacon provides station identification.
 
+## Step 1 status (2026-10-07)
+
+Done: `APRS` preset, settings record (`app/aprs_settings.c`, 96 B at EEPROM `0x00D000` =
+SPI `0x012000`, shared across config banks), band windows (`app/aprs_bands.c`), flat APRS-first
+menu (placeholders, read-only; `MENU_CAT` off), host tests in `tools/aprs` (`make -C tools/aprs test`).
+Code review fixes: per-channel `TX_LOCK` can no longer bypass the band limit
+(`TX_LOCK_APPLIES`), strings zero-padded on encode, EEPROM address/size tied by constants.
+Known gap: RX confinement only gates keypad entry and VFO stepping; stored VFO/channel
+frequencies outside the windows still receive (TX is blocked). Decide on bench whether to clamp
+with `APRS_FreqClamp` at VFO load. Still to do in step 1: flash the build and confirm the radio
+works normally.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

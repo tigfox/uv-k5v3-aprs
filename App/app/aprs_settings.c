@@ -47,6 +47,13 @@ static bool is_msgto_char(char c)  { return is_call_char(c) || c == '-'; }
 static bool is_digit_char(char c)  { return c >= '0' && c <= '9'; }
 static bool is_print_char(char c)  { return (unsigned char)c >= 0x20 && (unsigned char)c <= 0x7E; }
 
+/* Copy the string only, so bytes after the NUL never reach flash or the CRC. */
+static void put_text(uint8_t *dst, const char *src, unsigned cap)
+{
+    for (unsigned i = 0; i < cap && src[i]; i++)
+        dst[i] = (uint8_t)src[i];
+}
+
 aprs_settings_t APRS_SettingsDefaults(void)
 {
     aprs_settings_t s;
@@ -114,10 +121,10 @@ bool APRS_SettingsEncode(const aprs_settings_t *s, uint8_t out[APRS_RECORD_SIZE]
     r[OFF_INTERVAL + 1] = (uint8_t)(s->interval_s >> 8);
     r[OFF_LEVEL] = s->tone_level;
     r[OFF_TWIST] = (uint8_t)s->tone_twist;
-    memcpy(r + OFF_CALL, s->call, sizeof s->call);
-    memcpy(r + OFF_MSGTO, s->msgto, sizeof s->msgto);
-    memcpy(r + OFF_LOC, s->loc, sizeof s->loc);
-    memcpy(r + OFF_COMMENT, s->comment, sizeof s->comment);
+    put_text(r + OFF_CALL, s->call, sizeof s->call);
+    put_text(r + OFF_MSGTO, s->msgto, sizeof s->msgto);
+    put_text(r + OFF_LOC, s->loc, sizeof s->loc);
+    put_text(r + OFF_COMMENT, s->comment, sizeof s->comment);
     uint16_t crc = crc16(r, OFF_CRC);
     r[OFF_CRC] = (uint8_t)(crc & 0xFF);
     r[OFF_CRC + 1] = (uint8_t)(crc >> 8);

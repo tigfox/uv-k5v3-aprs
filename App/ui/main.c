@@ -1763,7 +1763,7 @@ void UI_DisplayMain(void)
 #endif
         }
 
-        if((gScanStateDir == SCAN_OFF || vfo_num != gEeprom.RX_VFO) && TX_freq_check(frequency) != 0 && displayVfo->TX_LOCK == true)
+        if((gScanStateDir == SCAN_OFF || vfo_num != gEeprom.RX_VFO) && TX_freq_check(frequency) != 0 && TX_LOCK_APPLIES(displayVfo) == true)
         {
             if (!FUNCTION_IsRx() || RxOnVfofrequency != frequency)
                 memcpy(p_line0 + 24, BITMAP_VFO_Lock, sizeof(BITMAP_VFO_Lock));

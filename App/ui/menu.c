@@ -46,7 +46,7 @@
 #include "welcome.h"
 #ifdef ENABLE_APRS_MENU_ONLY
     #include "app/aprs_menu_text.h"
-    #include "app/aprs_store.h"
+    #include "app/aprs_store.h"   /* needs ENABLE_APRS (the APRS preset sets both) */
     static_assert(MENU_APRS_LAST - MENU_APRS_FIRST + 1 == APRS_MI_COUNT, "APRS menu ids must match APRS_MI_*");
 #endif
 #ifdef ENABLE_FEAT_F4HWN_MULTIBOOT
