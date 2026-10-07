@@ -170,6 +170,7 @@
                 "ENABLE_FMRADIO": false,
                 "ENABLE_VOICE": false,
                 "ENABLE_FEAT_F4HWN_FULL_WATCH": false,
+                "ENABLE_FEAT_F4HWN_MENU_CAT": false,
                 "EDITION_STRING": "APRS",
                 "TARGET": "f4hwn.aprs"
             }

@@ -1,2 +1,4 @@
 test_aprs_settings
 *.dSYM
+test_aprs_bands
+test_aprs_menu_text

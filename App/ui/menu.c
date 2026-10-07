@@ -44,12 +44,69 @@
 #include "menu.h"
 #include "ui.h"
 #include "welcome.h"
+#ifdef ENABLE_APRS_MENU_ONLY
+    #include "app/aprs_menu_text.h"
+    #include "app/aprs_store.h"
+    static_assert(MENU_APRS_LAST - MENU_APRS_FIRST + 1 == APRS_MI_COUNT, "APRS menu ids must match APRS_MI_*");
+#endif
 #ifdef ENABLE_FEAT_F4HWN_MULTIBOOT
     #include "driver/mb_flash.h"
     #include "multiboot.h"
 #endif
 
 
+#ifdef ENABLE_APRS_MENU_ONLY
+// APRS build: only the APRS, RF, battery and key-lock settings are in the menu.
+// Everything else keeps its stored value and is set by programming cable.
+const t_menu_item MenuList[] =
+{
+//   text,          menu ID
+    // APRS
+    {"APRS",        MENU_APRS          },
+    {"Digi",        MENU_APRS_DIGI     },
+    {"DHops",       MENU_APRS_DHOPS    },
+    {"DDly",        MENU_APRS_DDLY     },
+    {"BcnTy",       MENU_APRS_BCNTY    },
+    {"DStat",       MENU_APRS_DSTAT    },
+    {"Intv",        MENU_APRS_INTV     },
+    {"Call",        MENU_APRS_CALL     },
+    {"SSID",        MENU_APRS_SSID     },
+    {"Loc",         MENU_APRS_LOC      },
+    {"Cmnt",        MENU_APRS_CMNT     },
+    {"MsgTo",       MENU_APRS_MSGTO    },
+    {"Msg",         MENU_APRS_MSG      },
+    {"Send",        MENU_APRS_SEND     },
+    {"RdMsg",       MENU_APRS_RDMSG    },
+    {"BEACON",      MENU_APRS_BEACON   },
+    // RF
+    {"Power",       MENU_TXP           },
+    {"Sql",         MENU_SQL           },
+    {"W/N",         MENU_W_N           },
+    {"Step",        MENU_STEP          },
+    {"TxTOut",      MENU_TOT           },
+    {"BusyCL",      MENU_BCL           },
+    // Battery
+    {"BatSav",      MENU_SAVE          },
+    {"BatTyp",      MENU_BATTYP        },
+    {"BatTxt",      MENU_BAT_TXT       },
+    // Lock
+    {"KeyLck",      MENU_AUTOLK        },
+
+    // hidden service menu, as upstream (PTT + upper side button at power-on)
+    {"F Lock",      MENU_F_LOCK        },
+    {"350 En",      MENU_350EN         },
+#ifdef ENABLE_F_CAL_MENU
+    {"FrCali",      MENU_F_CALI        },
+#endif
+    {"BatCal",      MENU_BATCAL        },
+    {"SetNav",      MENU_SET_NAV       },
+    {"Reset",       MENU_RESET         },
+
+    {"",                              0xff               }  // end of list - DO NOT delete or move this this
+};
+
+const uint8_t FIRST_HIDDEN_MENU_ITEM = MENU_F_LOCK;
+#else
 const t_menu_item MenuList[] =
 {
 //   text,          menu ID
@@ -200,6 +257,7 @@ const t_menu_item MenuList[] =
 };
 
 const uint8_t FIRST_HIDDEN_MENU_ITEM = MENU_F_LOCK;
+#endif /* ENABLE_APRS_MENU_ONLY */
 
 const char* const gSubMenu_TXP[] =
 {
@@ -1046,6 +1104,12 @@ void UI_DisplayMenu(void)
 
     switch (m)
     {
+#ifdef ENABLE_APRS_MENU_ONLY
+        case MENU_APRS_FIRST ... MENU_APRS_LAST:
+            APRS_MenuText(&gAprsSettings, (unsigned)(m - MENU_APRS_FIRST), String, sizeof(String));
+            break;
+#endif
+
         case MENU_SQL:
             sprintf(String, "%d", gSubMenuSelection);
             break;

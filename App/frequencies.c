@@ -18,6 +18,9 @@
 #include "misc.h"
 #include "settings.h"
 #include <assert.h>
+#ifdef ENABLE_US_2M_70CM_ONLY
+    #include "app/aprs_bands.h"
+#endif
 
 // the BK4819 has 2 bands it covers, 18MHz ~ 630MHz and 760MHz ~ 1300MHz
 
@@ -166,6 +169,12 @@ int32_t TX_freq_check(const uint32_t Frequency)
     if (RX_freq_check(Frequency))
         return -1;
 
+#ifdef ENABLE_US_2M_70CM_ONLY
+    // APRS build: TX only inside the US 2 m / 70 cm windows, whatever F Lock
+    // says (RX_freq_check has already confined Frequency to them).
+    return gSetting_F_LOCK == F_LOCK_ALL ? -1 : 0;
+#endif
+
     switch (gSetting_F_LOCK)
     {
         case F_LOCK_DEF:
@@ -275,6 +284,11 @@ int32_t TX_freq_check(const uint32_t Frequency)
 int32_t RX_freq_check(const uint32_t Frequency)
 {   // return '0' if RX frequency is allowed
     // otherwise return '-1'
+
+#ifdef ENABLE_US_2M_70CM_ONLY
+    if (!APRS_FreqAllowed(Frequency))
+        return -1;  // APRS build: only the US 2 m and 70 cm windows
+#endif
 
     if (Frequency < frequencyBandTable[0].lower || Frequency > frequencyBandTable[BAND_N_ELEM - 1].upper)
         return -1;  // not allowed outside this range

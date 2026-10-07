@@ -168,8 +168,12 @@ enable_feature(ENABLE_APRS
     app/aprs_settings.c
     app/aprs_store.c
 )
-enable_feature(ENABLE_US_2M_70CM_ONLY)
-enable_feature(ENABLE_APRS_MENU_ONLY)
+enable_feature(ENABLE_US_2M_70CM_ONLY
+    app/aprs_bands.c
+)
+enable_feature(ENABLE_APRS_MENU_ONLY
+    app/aprs_menu_text.c
+)
 enable_feature(ENABLE_BIG_FREQ)
 enable_feature(ENABLE_SMALL_BOLD)
 enable_feature(ENABLE_CUSTOM_MENU_LAYOUT)
