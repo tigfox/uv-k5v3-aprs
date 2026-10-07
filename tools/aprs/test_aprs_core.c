@@ -55,7 +55,7 @@ static char *AddrStr(char *p, const uint8_t *a7, bool star)
 {
     for (int k = 0; k < 6; k++) { const char c = (char)(a7[k] >> 1); if (c != ' ') *p++ = c; }
     const int ssid = (a7[6] >> 1) & 0x0F;
-    if (ssid) p += sprintf(p, "-%d", ssid);
+    if (ssid) p += snprintf(p, 8, "-%d", ssid);
     if (star && (a7[6] & 0x80)) *p++ = '*';
     return p;
 }
@@ -427,7 +427,7 @@ static int test_textentry(void)
 
 static int test_hdlc_and_parsers(void)
 {
-    // Build the frame exactly like APRS_TransmitHardcoded_N0CALL
+    // Build the frame exactly like APRS_BuildHeader plus a hand-made info field
     static const uint8_t INFO[] = "!1000.00N/02000.00E>UV-K5 APRS";
     uint8_t frame[7 * 4 + 2 + (sizeof(INFO) - 1) + 2];
     uint16_t idx = 0;

@@ -20,7 +20,7 @@
 #define APRS_DIGI_DELAYS      4u
 #define APRS_TWIST_MAX        32
 
-enum { APRS_DIGI_OFF, APRS_DIGI_FILL, APRS_DIGI_WIDE };
+enum { APRS_DIGI_OFF, APRS_DIGI_FILL, APRS_DIGI_WIDE };   /* same values as DIGI_* in aprs_digi.h */
 
 /* Fields are ordered so the struct has no padding (memcmp-safe). */
 typedef struct {

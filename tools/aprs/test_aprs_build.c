@@ -152,8 +152,52 @@ static void test_loc_distance_match(void)
     CHECK(APRS_MessageToMe((const uint8_t *)":W1ABC-12 :x", 12, "W1ABC", 12));
 }
 
+static void test_ranges_and_limits(void)
+{
+    int32_t lat = 0, lon = 0;
+    /* latitude beyond the poles is rejected (the shared minute helper allows 180) */
+    CHECK(!APRS_ParseUncompressed((const uint8_t *)"9959.99N/07400.36W>", 19, &lat, &lon));
+    CHECK(!APRS_ParseUncompressed((const uint8_t *)"9030.00N/07400.36W>", 19, &lat, &lon));
+    CHECK(APRS_ParseUncompressed((const uint8_t *)"9000.00N/07400.36W>", 19, &lat, &lon) && lat == 90000000);
+    CHECK(!APRS_ParseCompressed((const uint8_t *)"/{{{{{{{{>{?!", 13, &lat, &lon));   /* past the poles */
+    CHECK(!APRS_ParseMicE((const uint8_t *)"S32UVT", (const uint8_t *)"`", 1, &lat, &lon));   /* short, no over-read */
+
+    /* the dispatcher: plain, with a timestamp (@ and /), compressed, Mic-E, junk */
+    const uint8_t dest[7] = { 'S' << 1, '3' << 1, '2' << 1, 'U' << 1, 'V' << 1, 'T' << 1, 0x60 };
+    CHECK(APRS_ParsePosition(dest, (const uint8_t *)"!4042.76N/07400.36W>", 20, &lat, &lon));
+    CHECK(lat == 40712666 && lon == -74006000);
+    CHECK(APRS_ParsePosition(dest, (const uint8_t *)"@092345z4042.76N/07400.36W>", 27, &lat, &lon));
+    CHECK(lat == 40712666);
+    CHECK(APRS_ParsePosition(dest, (const uint8_t *)"=/5L!!<*e7>{?!", 14, &lat, &lon));
+    CHECK(lat > 49400000 && lat < 49600000);
+    const uint8_t mic[9] = { 0x60, 12 + 28, 7 + 28, 35 + 28, 'x', 'x', 'x', '/', '>' };
+    CHECK(APRS_ParsePosition(dest, mic, 9, &lat, &lon) && lat == 33427333);
+    CHECK(!APRS_ParsePosition(dest, (const uint8_t *)"T#001", 5, &lat, &lon));
+    CHECK(!APRS_ParsePosition(dest, (const uint8_t *)"!", 1, &lat, &lon));
+
+    /* Loc: valid checksum but out of range (lat digits 1800001 / lon 3600001) */
+    CHECK(!APRS_LocDecode("180000100000007", &lat, &lon) || lat <= 90000000);
+    CHECK(!APRS_LocDecode("999999999999995", &lat, &lon));
+    /* message boundary: exactly 11 bytes, and a missing second colon */
+    CHECK(APRS_MessageToMe((const uint8_t *)":W1ABC-7  :", 11, "W1ABC", 7));
+    CHECK(!APRS_MessageToMe((const uint8_t *)":W1ABC-7  ;hi", 13, "W1ABC", 7));
+
+    /* worst case HDLC: 152 bytes of 0xFF stuff to < 1920 bits and keep the closing flags */
+    uint8_t buf[HDLC_BUF_SIZE], fr[APRS_RAWTX_MAX + 2u];
+    memset(fr, 0xFF, sizeof fr);
+    uint16_t bits = HDLC_EncodeFrame(buf, fr, sizeof fr);
+    CHECK(bits > 0 && bits <= HDLC_BUF_SIZE * 8u);
+    CHECK(HDLC_EncodeFrame(buf, fr, sizeof fr + 1u) == 0);   /* over the budget: refused */
+    /* absurd coordinates are clamped, never wrapped */
+    uint8_t f[APRS_BUILD_MAX];
+    aprs_settings_t s = station();
+    uint16_t n = APRS_BuildBeacon(f, &s, INT32_MIN, INT32_MAX);
+    CHECK(n > 0 && strstr(tnc2(f, n), "!9000.00S/18000.00E>") != NULL);
+}
+
 int main(void)
 {
+    test_ranges_and_limits();
     test_addresses(); test_beacons(); test_messages(); test_loc_distance_match();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;

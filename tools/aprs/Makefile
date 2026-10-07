@@ -1,5 +1,5 @@
 # Host tests for the hardware-free APRS code (run on the build machine, not the radio).
-CFLAGS = -std=c11 -Wall -Wextra -Werror -I../../App -O1 -g
+CFLAGS = -std=c11 -Wall -Wextra -Werror -I../../App -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined
 CORE = $(addprefix ../../App/app/, aprs_ax25.c aprs_beacon.c aprs_digi.c aprs_lastheard.c aprs_msg.c aprs_parse.c aprs_text.c aprs_settings.c)
 SRC = ../../App/app/aprs_settings.c
 

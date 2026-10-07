@@ -21,7 +21,7 @@
 #include <stdint.h>
 
 // "LH TB1AAW-9 12m*": source address a7 (AX.25 form), heard `ticks` 10 ms ticks ago, '*' if this
-// station repeated it. At most 18 characters (fits one row of the small font).
+// station repeated it. At most 18 characters plus the NUL: out needs 19 bytes.
 void APRS_FmtLastHeard(char *out, const uint8_t *a7, uint32_t ticks, bool rpt);
 // "RPT  567": 3-letter label and the count right-aligned in 5 places: always 8 characters.
 void APRS_FmtCount(char *out, const char *label, uint16_t v);

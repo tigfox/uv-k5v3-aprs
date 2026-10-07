@@ -25,7 +25,8 @@
 // (aprs.fi and friends resolve tocalls to a device name).
 #define APRS_TOCALL "APZK5"
 
-// Longest frame the builders make (FCS excluded). The FCS is appended at TX in two spare bytes.
+// Size of the buffers the builders fill: the longest frame is 93 bytes and the FCS goes in two
+// spare bytes after it, so callers pass at least this many.
 #define APRS_BUILD_MAX 100u
 
 // Destination, source and path, control and PID. A MOBILE station asks for WIDE1-1,WIDE2-1;

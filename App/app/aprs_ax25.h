@@ -43,7 +43,8 @@ typedef struct {
 void HDLC_PutBit(hdlc_writer_t *w, bool bit);
 void HDLC_PutByte(hdlc_writer_t *w, uint8_t b, bool stuff);
 /* Lead flags + frame (FCS included, bit-stuffed) + tail flags as NRZI line levels, MSB
- * first, into buf[HDLC_BUF_SIZE] (cleared first). Returns the number of bits. */
+ * first, into buf[HDLC_BUF_SIZE] (cleared first). Returns the number of bits, or 0 if the
+ * frame is longer than APRS_RAWTX_MAX plus its 2-byte FCS (never a truncated stream). */
 uint16_t HDLC_EncodeFrame(uint8_t buf[HDLC_BUF_SIZE], const uint8_t *frame, uint16_t frame_len);
 
 #endif

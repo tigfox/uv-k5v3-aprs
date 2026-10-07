@@ -27,7 +27,8 @@ uint8_t APRS_ParseCompressed(const uint8_t *p, uint16_t len, int32_t *lat, int32
 // Dispatch on the data type identifier at ip[0]; frame is the AX.25 frame (Mic-E needs the destination).
 bool APRS_ParsePosition(const uint8_t *frame, const uint8_t *ip, uint16_t ilen, int32_t *lat, int32_t *lon);
 
-// "41.15N": degrees with two decimals and the hemisphere letter. Returns the end of the text.
+// "41.15N": degrees with two decimals and the hemisphere letter. Returns the end of the text;
+// it does not NUL-terminate (nor does APRS_FmtDistance).
 char *APRS_FmtCoord(char *p, int32_t micro, char pos, char neg);
 // Distance in metres between two points (equirectangular, integer only), and "12.3km" / "850m".
 uint32_t APRS_DistanceMetres(int32_t lat, int32_t lon, int32_t my_lat, int32_t my_lon);

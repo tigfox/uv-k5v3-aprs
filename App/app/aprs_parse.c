@@ -42,7 +42,7 @@ uint8_t APRS_ParseUncompressed(const uint8_t *p, uint16_t len, int32_t *lat, int
         return 0;
     latd = DIGIT(q[0]) * 10u + DIGIT(q[1]);
     latm = DIGIT(q[2]) * 1000u + DIGIT(q[3]) * 100u + DIGIT(q[5]) * 10u + DIGIT(q[6]);
-    if (!MIN100_TO_MICRO(latd, latm, lat))
+    if (latd > 90u || (latd == 90u && latm > 0u) || !MIN100_TO_MICRO(latd, latm, lat))
         return 0;
     if (q[7] == 'S')
         *lat = -*lat;
@@ -67,10 +67,10 @@ uint8_t APRS_ParseUncompressed(const uint8_t *p, uint16_t len, int32_t *lat, int
 
 uint8_t APRS_ParseMicE(const uint8_t *frame, const uint8_t *info, uint16_t ilen, int32_t *lat, int32_t *lon)
 {
+    if (ilen < 9)
+        return 0;
     const uint8_t t = info[0];
     if (t != 0x60 && t != 0x27 && t != 0x1C && t != 0x1D)  // ` ' and old GPS types
-        return 0;
-    if (ilen < 9)
         return 0;
 
     // latitude digits + flags live in the AX.25 destination address
@@ -137,6 +137,8 @@ uint8_t APRS_ParseCompressed(const uint8_t *p, uint16_t len, int32_t *lat, int32
         if (dd > 360u) return 0;
         *lon = -180000000 + (int32_t)(dd * 1000000u + (rr * 21u) / 4u);
     }
+    if (*lat < -90000000 || *lon > 180000000)
+        return 0;   // the top of the base-91 range lies beyond the poles / date line
     return 1;
 }
 

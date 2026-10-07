@@ -47,7 +47,12 @@
 
 #include "app/aprs_digi.h"
 #include "app/aprs_ax25.h"
+#include "app/aprs_settings.h"
 #include <string.h>
+
+_Static_assert(DIGI_MAX_FRAME == APRS_RAWTX_MAX, "digi repeats must fit the TX budget");
+_Static_assert((int)DIGI_OFF == (int)APRS_DIGI_OFF && (int)DIGI_FILL == (int)APRS_DIGI_FILL && (int)DIGI_WIDE == (int)APRS_DIGI_WIDE, "digi modes");
+_Static_assert(DIGI_HOPS_MAX == APRS_DIGI_HOPS_MAX && DIGI_DELAYS == APRS_DIGI_DELAYS, "digi limits");
 
 
 uint8_t  gAPRS_DigiMode;

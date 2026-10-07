@@ -66,6 +66,9 @@ typedef enum {
 // repeat, with the path rewritten, if there is one. now is in 10 ms ticks.
 digi_result_t DIGI_Consider(const uint8_t *frame, uint16_t len, uint32_t now,
                             const char *mycall, uint8_t myssid);
+// Single caller, RX stopped between DIGI_Due and DIGI_Sent: the frame DIGI_Due returns is the
+// module's static buffer. DIGI_Consider does not check the callsign: the caller must refuse
+// to repeat under N0CALL (APRS_CallIsSet).
 // The queued repeat if due and the channel is clear (FCS excluded, two spare bytes for
 // it), else NULL. Report the outcome with DIGI_Sent.
 uint8_t *DIGI_Due(uint32_t now, bool busy, uint16_t *len);

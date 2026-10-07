@@ -105,6 +105,8 @@ void HDLC_PutByte(hdlc_writer_t *w, uint8_t b, bool stuff)
 uint16_t HDLC_EncodeFrame(uint8_t buf[HDLC_BUF_SIZE], const uint8_t *frame, uint16_t frame_len)
 {
     memset(buf, 0, HDLC_BUF_SIZE);
+    if (frame_len > APRS_RAWTX_MAX + 2u)
+        return 0;   // would not fit: never send a truncated frame
     hdlc_writer_t w = { buf, 0, 0, 1 };
     for (uint16_t i = 0; i < HDLC_LEAD_FLAGS; i++)
         HDLC_PutByte(&w, 0x7E, false);

@@ -52,8 +52,17 @@ static uint16_t pos_digits(uint8_t *out, uint32_t v, bool deg3)
     return n;
 }
 
+_Static_assert(30u + 20u + APRS_COMMENT_MAX + 2u <= APRS_BUILD_MAX, "beacon plus FCS must fit APRS_BUILD_MAX");
+
+static int32_t clamp_udeg(int32_t v, int32_t limit)
+{
+    return v > limit ? limit : (v < -limit ? -limit : v);
+}
+
 uint16_t APRS_BuildBeacon(uint8_t *out, const aprs_settings_t *s, int32_t lat_udeg, int32_t lon_udeg)
 {
+    lat_udeg = clamp_udeg(lat_udeg, 90000000);    // also keeps -v well defined
+    lon_udeg = clamp_udeg(lon_udeg, 180000000);
     const bool digi = s->beacon_type != 0;
     uint16_t idx = APRS_BuildHeader(out, s, digi);
 
