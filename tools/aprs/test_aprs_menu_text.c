@@ -46,6 +46,17 @@ int main(void)
     is(&s, 99, "N/A");
     { char tiny[4]; APRS_MenuText(&s, APRS_MI_CALL, tiny, sizeof tiny); CHECK(strlen(tiny) == 3); }
     { char one[1] = {'x'}; APRS_MenuText(&s, APRS_MI_CALL, one, 1); CHECK(one[0] == 0); }
+    {
+        aprs_dstat_t d = { 12, 0, 21, 48, "W1ABC-7", true };
+        char b[24];
+        APRS_DStatText(&d, 0, b, sizeof b); CHECK(strcmp(b, "HRD 12\nW1ABC-7") == 0);
+        APRS_DStatText(&d, 1, b, sizeof b); CHECK(strcmp(b, "HRD 12\navg 21us") == 0);
+        APRS_DStatText(&d, 2, b, sizeof b); CHECK(strcmp(b, "HRD 12\nmax 48us") == 0);
+        APRS_DStatText(&d, 3, b, sizeof b); CHECK(strcmp(b, "HRD 12\nW1ABC-7") == 0);
+        d.last[0] = 0; APRS_DStatText(&d, 0, b, sizeof b); CHECK(strcmp(b, "HRD 12\n--") == 0);
+        d.running = false; APRS_DStatText(&d, 0, b, sizeof b); CHECK(strcmp(b, "OFF") == 0);
+        d.running = true; APRS_DStatText(&d, 1, b, 5); CHECK(strlen(b) == 4);
+    }
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;
 }

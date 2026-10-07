@@ -4,7 +4,9 @@
 #ifndef APP_APRS_MENU_TEXT_H
 #define APP_APRS_MENU_TEXT_H
 
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "app/aprs_settings.h"
 
 /* Item numbers, in menu order; ui/menu.h's MENU_APRS_* ids follow the same order. */
@@ -14,6 +16,20 @@ enum {
     APRS_MI_MSG, APRS_MI_SEND, APRS_MI_RDMSG, APRS_MI_BEACON,
     APRS_MI_COUNT
 };
+
+/* What the DStat item shows: the receiver's counters, rotating through three views. */
+typedef struct {
+    uint32_t heard;          /* good frames decoded */
+    uint32_t dropped;        /* decoded but lost (queue full) */
+    uint32_t isr_avg_us;     /* demodulator interrupt, mean and longest, microseconds */
+    uint32_t isr_max_us;
+    char     last[10];       /* source of the last frame heard, "" if none */
+    bool     running;
+} aprs_dstat_t;
+
+/* Two lines: "HRD n", then view (phase / 2 s mod 3): last heard, "avg Nus", "max Nus".
+ * "OFF" when the receiver is not running. Always NUL-terminates (when n > 0). */
+void APRS_DStatText(const aprs_dstat_t *d, unsigned phase, char *out, size_t n);
 
 /* Always NUL-terminates out (when n > 0), truncating if needed. */
 void APRS_MenuText(const aprs_settings_t *s, unsigned item, char *out, size_t n);

@@ -28,6 +28,7 @@
 #include "settings.h"
 #ifdef ENABLE_APRS
     #include "app/aprs_store.h"
+    #include "app/aprs_task.h"
 #endif
 #include "version.h"
 #ifdef ENABLE_FEAT_F4HWN_OVERLAY_INFO
@@ -136,6 +137,7 @@ void Main(void)
 
 #ifdef ENABLE_APRS
     APRS_StoreInit();
+    APRS_TaskInit();
 #endif
 
     RADIO_ConfigureChannel(0, VFO_CONFIGURE_RELOAD);

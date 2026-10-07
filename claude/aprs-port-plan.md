@@ -312,6 +312,23 @@ Changes vs ta1js: beacon/message comment up to 43 chars (was 31), a station with
 sends no beacon (ta1js sent 0/0), digi core gained `DIGI_Reset`. Compiled into the APRS preset;
 nothing calls them yet, so the image is unchanged.
 
+## Step 3 status (2026-10-07)
+
+Built, **not yet run on the radio**. `app/aprs_demod.c` is a C transcription of armel's demodulator;
+`make -C tools/aprs test` feeds it ADC vectors generated from his Python model
+(`tools/aprs/gen_vectors.py`, `vectors/`): all 15 cases decode exactly what the model decodes (13/13
+true frames, the bad-FCS frame rejected), plus 30 s of noise and silence with no false frame.
+`driver/aprs_rx.c`: **TIM6** update interrupt at 9.6 kHz (priority 1) reads ADC1 channel 4 (PA4) and
+runs the demodulator in the ISR; frames go to a 2-slot queue for the main loop. Design change from the
+plan: **no DMA and no half-buffer**; the ISR is short enough (measured on the radio: see DStat) and
+interrupts stay enabled during SPI-flash writes. The battery reading shares ADC1: `board.c` brackets it
+with `APRS_RxAdcAcquire/Release` (the tick is delayed, not lost). PA4 is held at mid-scale by DAC1
+(buffer off); the APRS build refuses `ENABLE_VOICE`. APRS on disables battery save
+(`app.c`). The menu item **APRS** now works (OFF/ON, saved, starts/stops the receiver live);
+**DStat** shows `HRD n` and rotates last heard / mean ISR µs / max ISR µs. Each decoded frame beeps.
+RAM: 12.9 KiB of 16 (demodulator ~1.3 KB, queue 0.7 KB).
+Known gaps: sleep mode (SetOff) is not yet disabled while APRS runs; squelch/AF behaviour unverified.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

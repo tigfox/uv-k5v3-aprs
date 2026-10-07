@@ -19,6 +19,9 @@
 #include <string.h>
 
 #include "app/action.h"
+#ifdef ENABLE_APRS
+    #include "app/aprs_task.h"
+#endif
 
 #ifdef ENABLE_AIRCOPY
     #include "app/aircopy.h"
@@ -1595,6 +1598,9 @@ void APP_Update(void)
         if (gPttIsPressed
             || gKeyBeingHeld
             || gEeprom.BATTERY_SAVE == 0
+#ifdef ENABLE_APRS
+            || APRS_IsOn()      // the receiver samples continuously: never sleep
+#endif
             || gScanStateDir != SCAN_OFF
             || gCssBackgroundScan
             || gScreenToDisplay != DISPLAY_MAIN
@@ -1868,6 +1874,10 @@ void APP_TimeSlice10ms(void)
     gNextTimeslice = false;
 
     SETTINGS_SaveVfoIndicesFlush();
+
+#ifdef ENABLE_APRS
+    APRS_Task10ms();
+#endif
 
 #ifdef ENABLE_FEAT_F4HWN_RXTX_LOG
     RXTX_LOG_Task10ms();

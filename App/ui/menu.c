@@ -47,6 +47,7 @@
 #ifdef ENABLE_APRS_MENU_ONLY
     #include "app/aprs_menu_text.h"
     #include "app/aprs_store.h"   /* needs ENABLE_APRS (the APRS preset sets both) */
+    #include "app/aprs_task.h"
     static_assert(MENU_APRS_LAST - MENU_APRS_FIRST + 1 == APRS_MI_COUNT, "APRS menu ids must match APRS_MI_*");
 #endif
 #ifdef ENABLE_FEAT_F4HWN_MULTIBOOT
@@ -1106,8 +1107,17 @@ void UI_DisplayMenu(void)
     {
 #ifdef ENABLE_APRS_MENU_ONLY
         case MENU_APRS_FIRST ... MENU_APRS_LAST:
-            APRS_MenuText(&gAprsSettings, (unsigned)(m - MENU_APRS_FIRST), String, sizeof(String));
+        {
+            if (m == MENU_APRS_DSTAT) {
+                APRS_DStatString(String, sizeof(String));
+                break;
+            }
+            aprs_settings_t shown = gAprsSettings;      // what is being edited, not yet saved
+            if (gIsInSubMenu && m == MENU_APRS)
+                shown.aprs_on = (uint8_t)(gSubMenuSelection != 0);
+            APRS_MenuText(&shown, (unsigned)(m - MENU_APRS_FIRST), String, sizeof(String));
             break;
+        }
 #endif
 
         case MENU_SQL:

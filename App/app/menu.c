@@ -55,6 +55,10 @@
 #include "ui/inputbox.h"
 #include "ui/menu.h"
 #include "ui/ui.h"
+#ifdef ENABLE_APRS_MENU_ONLY
+    #include "app/aprs_store.h"
+    #include "app/aprs_task.h"
+#endif
 
 
 uint8_t gUnlockAllTxConfCnt;
@@ -260,6 +264,12 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
 
     switch (menu_id)
     {
+#ifdef ENABLE_APRS_MENU_ONLY
+        case MENU_APRS:
+            *pMax = 1;
+            break;
+#endif
+
         case MENU_SQL:
             //*pMin = 0;
             *pMax = 9;
@@ -562,6 +572,13 @@ void MENU_AcceptSetting(void)
     {
         default:
             return;
+
+#ifdef ENABLE_APRS_MENU_ONLY
+        case MENU_APRS:
+            if (!APRS_SetOn(gSubMenuSelection != 0))
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;   // not saved
+            return;
+#endif
 
         case MENU_SQL:
             gEeprom.SQUELCH_LEVEL = gSubMenuSelection;
@@ -1017,6 +1034,12 @@ void MENU_ShowCurrentSetting(void)
     }
     switch (menu_id)
     {
+#ifdef ENABLE_APRS_MENU_ONLY
+        case MENU_APRS:
+            gSubMenuSelection = gAprsSettings.aprs_on;
+            break;
+#endif
+
         case MENU_SQL:
             gSubMenuSelection = gEeprom.SQUELCH_LEVEL;
             break;

@@ -74,3 +74,21 @@ void APRS_MenuText(const aprs_settings_t *s, unsigned item, char *out, size_t n)
     }
     *k.p = '\0';
 }
+
+void APRS_DStatText(const aprs_dstat_t *d, unsigned phase, char *out, size_t n)
+{
+    if (n == 0)
+        return;
+    sink_t k = { out, n - 1 };
+    if (!d->running) {
+        put_str(&k, "OFF");
+    } else {
+        put_str(&k, "HRD "); put_uint(&k, d->heard); put_char(&k, '\n');
+        switch (phase % 3u) {
+        case 0:  put_str(&k, d->last[0] ? d->last : "--"); break;
+        case 1:  put_str(&k, "avg "); put_uint(&k, d->isr_avg_us); put_str(&k, "us"); break;
+        default: put_str(&k, "max "); put_uint(&k, d->isr_max_us); put_str(&k, "us"); break;
+        }
+    }
+    *k.p = '\0';
+}

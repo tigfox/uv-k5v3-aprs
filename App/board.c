@@ -25,6 +25,9 @@
 #include "py32f071_ll_gpio.h"
 #include "py32f071_ll_rcc.h"
 #include "py32f071_ll_adc.h"
+#ifdef ENABLE_APRS
+    #include "driver/aprs_rx.h"
+#endif
 #include "driver/voice.h"
 #include "driver/backlight.h"
 #ifdef ENABLE_FMRADIO
@@ -173,6 +176,9 @@ void BOARD_ADC_Init(void)
 
 void BOARD_ADC_GetBatteryInfo(uint16_t *pVoltage, uint16_t *pCurrent)
 {
+#ifdef ENABLE_APRS
+    APRS_RxAdcAcquire();    // the APRS receiver samples ADC1 on another channel
+#endif
     LL_ADC_REG_StartConversionSWStart(ADC1);
     while (!LL_ADC_IsActiveFlag_EOS(ADC1))
         ;
@@ -180,6 +186,9 @@ void BOARD_ADC_GetBatteryInfo(uint16_t *pVoltage, uint16_t *pCurrent)
 
     *pVoltage = LL_ADC_REG_ReadConversionData12(ADC1);
     *pCurrent = 0;
+#ifdef ENABLE_APRS
+    APRS_RxAdcRelease();
+#endif
 }
 
 void BOARD_Init(void)
