@@ -298,6 +298,19 @@ frequencies outside the windows still receive (TX is blocked). Decide on bench w
 with `APRS_FreqClamp` at VFO load. Still to do in step 1: flash the build and confirm the radio
 works normally.
 
+## Step 2 status (2026-10-07)
+
+Ported hardware-free code into `App/app/`: `aprs_ax25` (CRC/FCS, address, HDLC encode),
+`aprs_parse` (uncompressed / Mic-E / compressed, distance, Loc code decode, message-to-me),
+`aprs_beacon`, `aprs_msg` (builders take `aprs_settings_t`; tocall `APZK5`), `aprs_digi`,
+`aprs_lastheard`, `aprs_text`. Host tests link the real files (nothing copied):
+`make -C tools/aprs test`, `make -C tools/aprs coverage` (93.6 % lines). Not ported: the BK4819
+FSK capture decoder and its streaming-RX test (replaced by the step 3 demodulator), and the
+third-party `}` unwrap tests (the ta1js firmware never had that code in `APRS_ShowFrame`).
+Changes vs ta1js: beacon/message comment up to 43 chars (was 31), a station with no valid Loc
+sends no beacon (ta1js sent 0/0), digi core gained `DIGI_Reset`. Compiled into the APRS preset;
+nothing calls them yet, so the image is unchanged.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

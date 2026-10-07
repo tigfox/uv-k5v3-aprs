@@ -2,3 +2,6 @@ test_aprs_settings
 *.dSYM
 test_aprs_bands
 test_aprs_menu_text
+test_aprs_core
+test_aprs_build
+cov
