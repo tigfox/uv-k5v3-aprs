@@ -169,6 +169,7 @@ enable_feature(ENABLE_APRS
     app/aprs_store.c
     app/aprs_ax25.c
     app/aprs_beacon.c
+    app/aprs_demod.c
     app/aprs_digi.c
     app/aprs_lastheard.c
     app/aprs_msg.c

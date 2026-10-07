@@ -5,3 +5,5 @@ test_aprs_menu_text
 test_aprs_core
 test_aprs_build
 cov
+vectors
+test_aprs_demod
