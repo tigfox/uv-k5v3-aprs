@@ -295,8 +295,9 @@ Code review fixes: per-channel `TX_LOCK` can no longer bypass the band limit
 (`TX_LOCK_APPLIES`), strings zero-padded on encode, EEPROM address/size tied by constants.
 Known gap: RX confinement only gates keypad entry and VFO stepping; stored VFO/channel
 frequencies outside the windows still receive (TX is blocked). Decide on bench whether to clamp
-with `APRS_FreqClamp` at VFO load. Still to do in step 1: flash the build and confirm the radio
-works normally.
+with `APRS_FreqClamp` at VFO load. Flashed 2026-10-07: radio boots and operates normally; the
+menu opens, the APRS-first list shows, and the RF/battery items work. The APRS items open but
+cannot be changed yet (read-only placeholders by design; editing is step 5 for the text items).
 
 ## Step 2 status (2026-10-07)
 
