@@ -9,5 +9,6 @@ test_aprs_settings: test_aprs_settings.c $(SRC)
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
+	rm -rf *.dSYM
 	rm -f test_aprs_settings
 .PHONY: test clean
