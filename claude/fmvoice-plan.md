@@ -155,18 +155,23 @@ APRS build are reused. APRS code is not compiled in.
   Plain `chirpc` at 9600 gets `Header short read`. Details in `tools/fmvoice/README.md` ("Connecting").
   `upload-csv` was run live (download, build, upload, read back). Test setup: pyserial in a venv in `build/venv`,
   CHIRP cloned beside the repo (`../chirp`), armel's driver as `build/FMVoice/Drivers/f4hwn.chirp.v6.1.0.py`.
-- Long bank names (2026-10-08, host tested and firmware builds, **not yet on the radio**): 16-character names in a new
-  table (EEPROM 0x8900, 24 x 16 bytes, flash 0x008900 in the attribute sector; `FMV_StoreBankName`), next to the 3-character
-  short names. Card flash shows the long name alone; the ScList menu shows the number big and the name wrapped on two
-  small lines (the item area is 78 pixels wide); the scan screen title is the long name; the status bar and the channel tag
-  keep the short name. CSV: `Scanlist`/`Bank` column = long name, new `Short` column = short name (else the first three
-  letters); a clash of two short names is reported. Tests: C host tests (42 checks for names) and 41 Python tests; the
-  FMVoice preset builds (flash 91.3 KiB, RAM 11.0 KiB). To try it: flash `build/FMVoice/f4hwn.fmvoice.bin`, then upload a CSV
-  with long names (`claude/release/f4hwn.fmvoice.bin` is still the last field-tested image).
+- Long bank names (2026-10-08, **on the radio, field checked**): 16-character names in a new table (EEPROM 0x8900,
+  24 x 16 bytes, flash 0x008900 in the attribute sector; `FMV_StoreBankName`), next to the 3-character short names. Card
+  flash shows the long name alone; the ScList menu shows the number big and the name wrapped on two small lines (the item
+  area is 78 pixels wide); the scan screen title is the long name (too fast to read while scanning, the user says that is
+  fine); the status bar and the channel tag keep the short name. CSV: `Scanlist`/`Bank` column = long name, new `Short`
+  column = short name (else the first three letters); a clash of two short names is reported; after a CSV is applied the
+  names of lists no channel is in are cleared (`--keep-unused-banks` keeps them). Tests: C host tests (42 checks for the
+  names) and 42 Python tests; the FMVoice preset builds (flash 91.3 KiB, RAM 11.0 KiB). Flashed `build/FMVoice/f4hwn.fmvoice.bin`
+  and uploaded `FMV_Ship.csv` over the AIOC (backup first, read back and compared with the image): banks FRS, REP, GMRS
+  (GMR), MURS (MUR), SOUTHMTN (SMT), TUSCARORA (NMT); the old GMR / MUR lists cleared; the 7 WX channels in no bank. The user
+  confirmed the menu, card and screens look right.
 - Field check after the upload (user, 2026-10-08): scanning works well; the earlier missing bank data is put down to a
   flashing mistake.
-- Still to do: flash and field-check the long bank names (menu wrap, card flash, scan title); re-run the plain
-  `chirp_cli.py -s ... --download-mmap` path on the radio (unit test only so far); the 4th byte of the short name is unused.
+- Still to do: re-run the plain `chirp_cli.py -s ... --download-mmap` path on the radio (unit test only so far); the 4th byte
+  of the short name is unused (the status bar shows 3 characters, so GMRS / MURS show as GMR / MUR there); the field-tested
+  image in `claude/release/` is still the one from before the long names (the new one is in `build/FMVoice/`, not copied);
+  voice contact on a repeater is still unconfirmed; tightening where Claude may run commands (sandbox / deny rules) was parked.
 - Step 6 done: `claude/fmvoice-card.html` (radio card) and `tools/fmvoice/README.md`.
 - Still open: bench list (tone search on a real repeater, scanning inside a bank, weak-signal tone detection, scan speed,
   CHIRP round trip with the FM Voice driver in the GUI); a permanent bank tag on the main screen (offered, not built);
