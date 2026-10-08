@@ -157,8 +157,8 @@ digi_result_t DIGI_Consider(const uint8_t *frame, uint16_t len, uint32_t now,
 
     uint8_t me[7];
     AX25_EncodeAddress(mycall, myssid, false, me);
-    if (memcmp(&frame[7], me, 6) == 0)
-        return DIGI_IGNORED;               // our own transmission, any SSID
+    if (memcmp(&frame[7], me, 6) == 0 && ((frame[13] ^ me[6]) & 0x1Eu) == 0)
+        return DIGI_IGNORED;               // our own transmission (same call and SSID); another SSID of the call is another station
 
     const uint16_t end = (uint16_t)(len - 2u);   // FCS excluded
     uint16_t s = 20;                       // SSID byte of the last address

@@ -442,6 +442,14 @@ is scanning or being configured stays queued (up to a minute) instead of being d
 view, `stk N`: the least stack ever left free, to size the RAM margin (APRS RAM is now 14.0 of 16 KiB).
 Not ported: the web beacon (mobile GPS), the code generator page (`aprs_pc.py loc` replaces it).
 
+## Digi: same callsign, other SSID (bench, user, 2026-10-08)
+
+With both the FT-5D and the UV-K5 on the operator's callsign the digi repeated nothing: HRD rose, RPT stayed 0.
+Cause: the inherited loop guard ignored any frame whose source call matched ours, whatever the SSID. Now only
+the same call **and** SSID is ignored (own transmission heard back); another SSID of the call is another
+station and is repeated. Two stations on the identical call-SSID are still treated as one: give each radio its
+own SSID (e.g. digi -1, handheld -7).
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

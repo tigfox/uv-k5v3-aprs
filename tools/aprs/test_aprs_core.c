@@ -148,9 +148,12 @@ static int test_digi(void)
     len = MkFrameV(f, "TB1AAW", 0, VIAS({"WIDE2", 2, false}), DINFO);
     ExpectResult(f, len, 9000, DIGI_IGNORED, "fill: WIDE2-2 is not a fill-in hop");
     len = MkFrameV(f, "TA1JS", 7, VIAS({"WIDE1", 1, false}), DINFO);
-    ExpectResult(f, len, 9000, DIGI_IGNORED, "own frame");
+    ExpectResult(f, len, 9000, DIGI_IGNORED, "own frame (same call and SSID)");
+    len = MkFrameV(f, "TA1JS", 7, VIAS({"WIDE1", 1, true}, {"WIDE2", 1, false}), DINFO);
+    ExpectResult(f, len, 9000, DIGI_IGNORED, "own frame again, after another digi used a hop");
+    /* the same callsign with another SSID is another station (a mobile and a digi of one operator) */
     len = MkFrameV(f, "TA1JS", 3, VIAS({"WIDE1", 1, false}), DINFO);
-    ExpectResult(f, len, 9000, DIGI_IGNORED, "own frame, other SSID");
+    ExpectRepeat(f, len, 9000, "TA1JS-3>APZK5,TA1JS-7*:" DINFO, "same call, other SSID is repeated");
     len = MkFrameV(f, "TB1AAW", 0, NOVIA, DINFO);
     ExpectResult(f, len, 9000, DIGI_IGNORED, "pathless frame");
 
