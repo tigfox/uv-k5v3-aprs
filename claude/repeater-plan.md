@@ -80,7 +80,9 @@ room).
   CTCSS scan (the BK4829 does the detection), and shows `PL 100.0` when found; then sets it as receive tone and,
   on confirmation, transmit tone.
 - **Quick save** from the same flow: name (arrow editor, as in the APRS build), scan list, and the **band-plan
-  offset filled in** (2 m: 600 kHz, + above 147.0 and - below... by sub-band; 70 cm: 5 MHz) which you can change.
+  offset filled in** from the common US band plan, which you can change: 2 m is 600 kHz, minus for outputs
+  below 147.0 MHz and from 147.6, plus from 147.0 to 147.6; 70 cm is 5 MHz, plus for outputs at 442-445 MHz and
+  minus at 447-450 MHz. Local coordination differs, so it is a default only, never a limit.
   Writes the next free channel and an info record (callsign, club, place, note, each optional).
 - The tone readout also shows while receiving, so an unknown repeater tells you its PL.
 
