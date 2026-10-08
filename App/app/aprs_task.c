@@ -16,6 +16,7 @@
 
 #include "app/aprs_task.h"
 #include "app/aprs_ax25.h"
+#include "app/aprs_beacon.h"
 #include "app/aprs_menu_text.h"
 #include "app/aprs_store.h"
 #include "audio.h"
@@ -50,6 +51,15 @@ bool APRS_SetOn(bool on)
     else
         APRS_RxStop();
     return true;
+}
+
+aprs_tx_result_t APRS_TxBeacon(void)
+{
+    uint8_t frame[APRS_BUILD_MAX + 2];
+    const uint16_t len = APRS_BuildStationBeacon(frame, &gAprsSettings);
+    if (len == 0)
+        return APRS_TX_BAD_FRAME;       // no valid Loc
+    return APRS_TxSend(frame, len);
 }
 
 void APRS_Task10ms(void)

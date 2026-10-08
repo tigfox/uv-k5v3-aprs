@@ -1115,6 +1115,10 @@ void UI_DisplayMenu(void)
             aprs_settings_t shown = gAprsSettings;      // what is being edited, not yet saved
             if (gIsInSubMenu && m == MENU_APRS)
                 shown.aprs_on = (uint8_t)(gSubMenuSelection != 0);
+            if (m == MENU_APRS_BEACON) {
+                strcpy(String, gIsInSubMenu && gSubMenuSelection != 0 ? "SEND" : "NO");
+                break;
+            }
             APRS_MenuText(&shown, (unsigned)(m - MENU_APRS_FIRST), String, sizeof(String));
             break;
         }

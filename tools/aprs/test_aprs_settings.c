@@ -20,8 +20,8 @@ static aprs_settings_t sample(void)
     s.digi_hops = 3;
     s.digi_delay = 2;
     s.beacon_type = 1;
-    s.tone_level = 200;
-    s.tone_twist = -10;
+    s.tone_level = 100;
+    s.tone_twist = -3;
     return s;
 }
 
@@ -96,7 +96,11 @@ static void test_validation(void)
     s = sample(); s.digi_hops = 8;           CHECK(!APRS_SettingsValid(&s));
     s = sample(); s.digi_hops = 0;           CHECK(!APRS_SettingsValid(&s));
     s = sample(); s.digi_delay = 4;          CHECK(!APRS_SettingsValid(&s));
-    s = sample(); s.tone_twist = 40;         CHECK(!APRS_SettingsValid(&s));
+    s = sample(); s.tone_twist = 9;          CHECK(!APRS_SettingsValid(&s));
+    s = sample(); s.tone_twist = -5;         CHECK(!APRS_SettingsValid(&s));
+    s = sample(); s.tone_level = 9;          CHECK(!APRS_SettingsValid(&s));
+    s = sample(); s.tone_level = 128;        CHECK(!APRS_SettingsValid(&s));
+    s = sample(); s.tone_level = 127; s.tone_twist = 8; CHECK(APRS_SettingsValid(&s));
     s = sample(); strcpy(s.msgto, "bad call"); CHECK(!APRS_SettingsValid(&s));
     CHECK(!APRS_SettingsValid(NULL));
 }

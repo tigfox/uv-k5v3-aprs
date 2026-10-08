@@ -46,6 +46,10 @@ typedef struct {
 void APRS_RxStart(void);    /* bias PA4, switch the ADC to it and start sampling; idempotent */
 void APRS_RxStop(void);     /* stop sampling and give PA4 and the ADC back */
 bool APRS_RxRunning(void);
+/* Stop sampling without giving PA4 and the ADC back (a transmission, whose audio is not ours to
+ * decode); Resume restarts it with a fresh demodulator. No-ops when not running. */
+void APRS_RxPause(void);
+void APRS_RxResume(void);
 /* Next decoded frame, oldest first; false when none. Main context only. */
 bool APRS_RxPop(aprs_rx_frame_t *out);
 /* A packet is arriving (preamble or a frame that looks like one): do not transmit now. */

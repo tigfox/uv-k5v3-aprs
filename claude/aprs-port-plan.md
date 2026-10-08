@@ -332,6 +332,20 @@ ta1js panel (last heard + HRD/RPT/DUP/DRP counters, `UI_DisplayAPRSPanel`), and 
 while APRS is on. Also force RxMode to MAIN ONLY while APRS is on (step 5/7).
 Known gaps: sleep mode (SetOff) is not yet disabled while APRS runs; squelch/AF behaviour unverified.
 
+## Step 4 status (2026-10-07)
+
+Built, **not yet run on the radio**. `app/aprs_modem.c` (tone registers, line levels, level 10..127 /
+twist -4..8 as armel's TX app; the settings record's ranges and defaults changed to match, so a record
+saved by the step 3 build is rejected once and APRS comes up OFF) and `driver/aprs_tx.c`
+(`APRS_TxSend`): receiver paused, `RADIO_SetTxParameters`, REG_51 = 0, `BK4819_TransmitTone(1200)`,
+then REG_71/REG_70 rewritten at each NRZI transition on a SysTick cycle counter (40000 cycles/bit),
+`RADIO_SetupRegisters(true)` to return to RX. Blocking (~0.8 s for a beacon), like armel's app; no
+`FUNCTION_TRANSMIT` state, so no TX timers / roger / RXTX log. Host test (`test_aprs_modem.c`): builder
+frames -> HDLC -> synthesized phase-continuous AFSK at the tone schedule -> the C demodulator decodes
+beacon, digi beacon, message, ack, 150-byte frame; 16/16 level x twist grid, +-0.8 % bit clock, noise
+6/6; a corrupted frame is rejected. The menu **BEACON** item (YES) sends the station beacon, but a
+beacon needs a callsign and a Loc, which cannot be entered yet.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

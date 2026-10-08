@@ -172,6 +172,8 @@ enable_feature(ENABLE_APRS
     app/aprs_beacon.c
     app/aprs_demod.c
     driver/aprs_rx.c
+    driver/aprs_tx.c
+    app/aprs_modem.c
     app/aprs_digi.c
     app/aprs_lastheard.c
     app/aprs_msg.c

@@ -14,7 +14,7 @@ enum {
 };
 
 #define DEFAULT_INTERVAL_S 600u
-#define DEFAULT_TONE_LEVEL 128u
+#define DEFAULT_TONE_LEVEL APRS_TONE_LEVEL_DEF
 
 static uint16_t crc16(const uint8_t *p, unsigned n)   /* CCITT-FALSE */
 {
@@ -80,7 +80,8 @@ bool APRS_SettingsValid(const aprs_settings_t *s)
         && s->digi_hops >= 1 && s->digi_hops <= APRS_DIGI_HOPS_MAX
         && s->digi_delay < APRS_DIGI_DELAYS
         && s->beacon_type <= 1
-        && s->tone_twist >= -APRS_TWIST_MAX && s->tone_twist <= APRS_TWIST_MAX;
+        && s->tone_level >= APRS_TONE_LEVEL_MIN && s->tone_level <= APRS_TONE_LEVEL_MAX
+        && s->tone_twist >= APRS_TWIST_MIN && s->tone_twist <= APRS_TWIST_MAX;
 }
 
 bool APRS_CallIsSet(const aprs_settings_t *s)

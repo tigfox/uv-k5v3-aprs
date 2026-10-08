@@ -18,7 +18,11 @@
 #define APRS_INTERVAL_MIN_S   60u
 #define APRS_DIGI_HOPS_MAX    7u
 #define APRS_DIGI_DELAYS      4u
-#define APRS_TWIST_MAX        32
+#define APRS_TONE_LEVEL_MIN   10u    /* REG_70 tone gain; see aprs_modem.h */
+#define APRS_TONE_LEVEL_MAX   127u
+#define APRS_TONE_LEVEL_DEF   66u
+#define APRS_TWIST_MIN        (-4)
+#define APRS_TWIST_MAX        8
 
 enum { APRS_DIGI_OFF, APRS_DIGI_FILL, APRS_DIGI_WIDE };   /* same values as DIGI_* in aprs_digi.h */
 
@@ -31,8 +35,8 @@ typedef struct {
     uint8_t  digi_hops;      /* 1..7 */
     uint8_t  digi_delay;     /* 0..3 */
     uint8_t  beacon_type;    /* 0 mobile, 1 digi */
-    uint8_t  tone_level;
-    int8_t   tone_twist;     /* -32..32 */
+    uint8_t  tone_level;     /* 10..127 */
+    int8_t   tone_twist;     /* -4..8: 2200 Hz gain = level x (8 + twist) / 8 */
     char     call[APRS_CALL_MAX + 1];
     char     msgto[APRS_MSGTO_MAX + 1];
     char     loc[APRS_LOC_MAX + 1];

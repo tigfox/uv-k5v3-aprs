@@ -266,6 +266,7 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
     {
 #ifdef ENABLE_APRS_MENU_ONLY
         case MENU_APRS:
+        case MENU_APRS_BEACON:
             *pMax = 1;
             break;
 #endif
@@ -577,6 +578,14 @@ void MENU_AcceptSetting(void)
         case MENU_APRS:
             if (!APRS_SetOn(gSubMenuSelection != 0))
                 gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;   // not saved
+            return;
+
+        case MENU_APRS_BEACON:
+            if (gSubMenuSelection != 0) {
+                // blocking, about a second: transmit the station beacon
+                if (APRS_TxBeacon() != APRS_TX_OK)
+                    gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;   // not sent
+            }
             return;
 #endif
 
@@ -1037,6 +1046,10 @@ void MENU_ShowCurrentSetting(void)
 #ifdef ENABLE_APRS_MENU_ONLY
         case MENU_APRS:
             gSubMenuSelection = gAprsSettings.aprs_on;
+            break;
+
+        case MENU_APRS_BEACON:
+            gSubMenuSelection = 0;      // always opens on NO
             break;
 #endif
 

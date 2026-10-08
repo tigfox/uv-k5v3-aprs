@@ -70,7 +70,8 @@ void APRS_MenuText(const aprs_settings_t *s, unsigned item, char *out, size_t n)
     case APRS_MI_LOC:    if (s->loc[0]) put_two_lines(&k, s->loc); else put_str(&k, "NONE"); break;
     case APRS_MI_CMNT:   put_two_lines(&k, s->comment); break;
     case APRS_MI_MSGTO:  put_str(&k, s->msgto); break;
-    default:             put_str(&k, "N/A"); break;   /* Msg, Send, RdMsg, BEACON: not wired yet */
+    case APRS_MI_BEACON: put_str(&k, "NO"); break;     /* an action: the menu shows SEND while editing */
+    default:             put_str(&k, "N/A"); break;   /* Msg, Send, RdMsg: not wired yet */
     }
     *k.p = '\0';
 }

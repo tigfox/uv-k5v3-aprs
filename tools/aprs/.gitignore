@@ -7,3 +7,4 @@ test_aprs_build
 cov
 vectors
 test_aprs_demod
+test_aprs_modem

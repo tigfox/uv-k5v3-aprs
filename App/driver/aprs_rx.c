@@ -36,7 +36,7 @@
 static aprs_demod_t     gDemod;
 static aprs_rx_frame_t  gQueue[APRS_RX_QUEUE];
 static volatile uint8_t gHead, gTail;           /* ISR writes gHead, main writes gTail */
-static volatile bool    gRunning, gBusy, gPrimed, gHeld;
+static volatile bool    gRunning, gBusy, gPrimed, gHeld, gPaused;
 static volatile uint32_t gSamples, gFrames, gDropped;
 static volatile uint32_t gCycMax, gCycSum, gCycN;
 
@@ -88,7 +88,7 @@ void APRS_RxStart(void)
         return;
     APRS_DemodInit(&gDemod);
     gHead = gTail = 0;
-    gBusy = gPrimed = gHeld = false;
+    gBusy = gPrimed = gHeld = gPaused = false;
     gSamples = gFrames = gDropped = gCycMax = gCycSum = gCycN = 0;
 
     bias_on();
@@ -124,6 +124,32 @@ void APRS_RxStop(void)
 bool APRS_RxRunning(void)
 {
     return gRunning;
+}
+
+void APRS_RxPause(void)
+{
+    if (!gRunning || gPaused)
+        return;
+    LL_TIM_DisableCounter(TIM6);
+    NVIC_DisableIRQ(TIM6_LPTIM1_DAC_IRQn);
+    adc_drain();
+    gPrimed = false;
+    gBusy = false;
+    gPaused = true;
+}
+
+void APRS_RxResume(void)
+{
+    if (!gRunning || !gPaused)
+        return;
+    APRS_DemodInit(&gDemod);
+    gPrimed = false;
+    LL_TIM_SetCounter(TIM6, 0);
+    LL_TIM_ClearFlag_UPDATE(TIM6);
+    NVIC_ClearPendingIRQ(TIM6_LPTIM1_DAC_IRQn);
+    gPaused = false;
+    NVIC_EnableIRQ(TIM6_LPTIM1_DAC_IRQn);
+    LL_TIM_EnableCounter(TIM6);
 }
 
 bool APRS_RxBusy(void)
@@ -173,7 +199,8 @@ void APRS_RxAdcRelease(void)
     adc_select_pa4();
     gPrimed = false;            /* the ADC data register holds a battery reading */
     gHeld = false;
-    NVIC_EnableIRQ(TIM6_LPTIM1_DAC_IRQn);   /* a pending tick fires now: one late sample */
+    if (!gPaused)
+        NVIC_EnableIRQ(TIM6_LPTIM1_DAC_IRQn);   /* a pending tick fires now: one late sample */
 }
 
 static inline uint32_t systick_elapsed(uint32_t start, uint32_t end)
