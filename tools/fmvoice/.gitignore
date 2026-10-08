@@ -6,3 +6,4 @@ fmv_vectors
 *.bin
 test_fmv_bank
 test_fmv_tone
+test_fmv_bands

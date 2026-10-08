@@ -181,7 +181,6 @@
             "inherits": "Fusion",
             "cacheVariables": {
                 "ENABLE_FMVOICE": true,
-                "ENABLE_US_2M_70CM_ONLY": true,
                 "ENABLE_SPECTRUM": false,
                 "ENABLE_FEAT_F4HWN_SPECTRUM": false,
                 "ENABLE_FMRADIO": false,

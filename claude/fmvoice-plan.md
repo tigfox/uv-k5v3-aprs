@@ -14,7 +14,7 @@ modules; the APRS preset does not change). Build it with `./compile-firmware.sh 
 | Info storage | **Per channel**. |
 | Screen | No dual watch, no VFO B in this build: the screen is free for a channel card. |
 | Location | **Place names** (the radio has no GPS). No lat/lon, so no distance sorting. |
-| Bands / mode | 2 m (144-148) and 70 cm (420-450) only, **FM only** (no digital voice). |
+| Bands / mode | **FM only** (no digital voice). Changed 2026-10-08 (user, who holds a GMRS licence): **receive anywhere the radio can; transmit only on 2 m, 70 cm, FRS/GMRS (462.550-462.725, 467.550-467.725) and the five MURS frequencies** (`app/fmv_bands.c`, host tested; a hard limit, the per-channel TX lock does not lift it). The APRS build keeps its 2 m / 70 cm limit. |
 | DCS | CTCSS is the focus; DCS keeps working on channels (the scanner finds both for free). |
 | Menu | **Keep most of the stock menu** (voice use needs offset, tones, scan, power). |
 | Card content | **Callsign (the channel name), frequency, and city / landmark.** No club field (user, 2026-10-08). |
