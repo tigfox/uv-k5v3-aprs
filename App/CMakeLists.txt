@@ -169,7 +169,10 @@ enable_feature(ENABLE_SPECTRUM
 
 # ---- Repeater (tigfox fork; Repeater preset only) ----
 
-enable_feature(ENABLE_REPEATER)
+enable_feature(ENABLE_REPEATER
+    app/rpt_info.c
+    app/rpt_store.c
+)
 
 # ---- APRS (tigfox fork; APRS preset only) ----
 
