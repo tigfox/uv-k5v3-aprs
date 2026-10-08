@@ -3,8 +3,8 @@ download / upload paths against a fake radio. Needs CHIRP's source and armel's v
 repository; both are skipped-for if missing):
 
     git clone --depth 1 https://github.com/kk7ds/chirp /some/where/chirp-src
-    CHIRP_SRC=/some/where/chirp-src RPT_UPSTREAM_DRIVER=~/Downloads/f4hwn.chirp.v6.1.0.py \
-        python3 -m pytest tools/repeater/test_chirp_driver.py
+    CHIRP_SRC=/some/where/chirp-src FMV_UPSTREAM_DRIVER=~/Downloads/f4hwn.chirp.v6.1.0.py \
+        python3 -m pytest tools/fmvoice/test_chirp_driver.py
 """
 import importlib.util
 import os
@@ -13,12 +13,12 @@ import sys
 
 import pytest
 
-import rpt_codec as rc
+import fmv_codec as rc
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHIRP_SRC = os.path.expanduser(os.environ.get("CHIRP_SRC", ""))
-UPSTREAM = os.path.expanduser(os.environ.get("RPT_UPSTREAM_DRIVER", "~/Downloads/f4hwn.chirp.v6.1.0.py"))
-VECTORS = os.path.join(HERE, "rpt_vectors")
+UPSTREAM = os.path.expanduser(os.environ.get("FMV_UPSTREAM_DRIVER", "~/Downloads/f4hwn.chirp.v6.1.0.py"))
+VECTORS = os.path.join(HERE, "fmv_vectors")
 
 pytestmark = pytest.mark.skipif(not (CHIRP_SRC and os.path.isdir(CHIRP_SRC) and os.path.exists(UPSTREAM)),
                                 reason="needs CHIRP_SRC and the upstream driver (see the module docstring)")
@@ -42,7 +42,7 @@ def drv(tmp_path_factory):
 
 def new_radio(drv, image=None):
     from chirp import memmap
-    r = drv.UVK5RadioF4HWNRepeater(None)
+    r = drv.UVK5RadioF4HWNFMVoice(None)
     r._mmap = memmap.MemoryMapBytes(image if image is not None else b"\xff" * 0x10000)
     r.process_mmap()
     return r
@@ -61,8 +61,8 @@ def load_csv(radio):
 
 
 def test_driver_is_a_separate_radio(drv):
-    assert drv.UVK5RadioF4HWNRepeater.MODEL == "UV-K1 & UV-K5 V3 (F4HWN Repeater)"
-    assert drv.UVK5RadioF4HWNRepeater.get_features(new_radio(drv)).has_comment is True
+    assert drv.UVK5RadioF4HWNFMVoice.MODEL == "UV-K1 & UV-K5 V3 (F4HWN FM Voice)"
+    assert drv.UVK5RadioF4HWNFMVoice.get_features(new_radio(drv)).has_comment is True
 
 
 def test_csv_comments_reach_the_image_and_come_back(drv):
@@ -88,7 +88,7 @@ def test_cut_text_is_warned_about(drv):
     assert any("1-256" in str(m) for m in r.validate_memory(mem))
 
 
-@pytest.mark.skipif(not os.path.exists(VECTORS), reason="build rpt_vectors first (make -C tools/repeater)")
+@pytest.mark.skipif(not os.path.exists(VECTORS), reason="build fmv_vectors first (make -C tools/fmvoice)")
 def test_the_c_decoder_reads_what_the_driver_wrote(drv, tmp_path):
     r = new_radio(drv)
     load_csv(r)
@@ -184,7 +184,7 @@ def test_download_reads_the_table_and_upload_writes_it_back(drv):
     drv.do_upload(r)
     assert any(off >= 0xD000 for off, _ in fake.writes)               # the table went to the radio
     assert max(off for off, _ in fake.writes if off < 0xD000) < 0xA178 + 0x80   # and the config area as before, not calibration
-    assert rc.rpt_decode(bytes(fake.eeprom[0xD000:0xD000 + 48]), int(r._memobj.channel[0].freq)) == "Gettysburg, Culp's Hill"
+    assert rc.fmv_decode(bytes(fake.eeprom[0xD000:0xD000 + 48]), int(r._memobj.channel[0].freq)) == "Gettysburg, Culp's Hill"
 
 
 def test_upload_never_writes_over_the_aprs_record(drv):

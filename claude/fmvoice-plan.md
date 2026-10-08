@@ -1,8 +1,9 @@
-# Repeater build for the UV-K5 V3 / UV-K1 (planning)
+# FM Voice build for the UV-K5 V3 / UV-K1 (planning)
 
-Started 2026-10-08. A second image from the same fork, built from a `Repeater` preset, for analog FM voice
-repeaters on 2 m and 70 cm. Branch `repeater` (from `aprs`, so it can reuse the tested modules; the APRS preset
-does not change). Nothing is built yet.
+Started 2026-10-08. A second image from the same fork, built from the `FMVoice` preset ("FM Voice"), for using
+analog FM voice repeaters on 2 m and 70 cm: the radio is a handheld that *uses* repeaters, it is not one (renamed
+from "Repeater" at the user's request, 2026-10-08). Branch `fmvoice` (from `aprs`, so it can reuse the tested
+modules; the APRS preset does not change). Build it with `./compile-firmware.sh FMVoice`.
 
 ## Decisions (user, 2026-10-08)
 
@@ -11,7 +12,7 @@ does not change). Nothing is built yet.
 | Banks | The firmware's **24 named scan lists** (plus ALL and MIX). Quick switching between them. |
 | Data entry | **CHIRP**, after a **CSV import**. |
 | Info storage | **Per channel**. |
-| Screen | No dual watch, no VFO B in this build: the screen is free for a repeater card. |
+| Screen | No dual watch, no VFO B in this build: the screen is free for a channel card. |
 | Location | **Place names** (the radio has no GPS). No lat/lon, so no distance sorting. |
 | Bands / mode | 2 m (144-148) and 70 cm (420-450) only, **FM only** (no digital voice). |
 | DCS | CTCSS is the focus; DCS keeps working on channels (the scanner finds both for free). |
@@ -56,7 +57,7 @@ callsign. Upload writes each memory's comment into the table; download shows it 
 exports (CHIRP can also query RepeaterBook directly) and manual editing all work with no new CHIRP columns.
 
 The example export (`RepeaterBook_CHIRP_SHIP_2m440.csv`, July 2020, 81 rows) is only a sample; the user will make a
-new one for the local area. Things in it the driver and a small checker (`tools/repeater/check_csv.py`) report
+new one for the local area. Things in it the driver and a small checker (`tools/fmvoice/check_csv.py`) report
 rather than hide: a `split` row with an empty offset (the transmit frequency is lost), rows with no tone (maybe open
 repeaters), text over 45 characters, names over the radio's name length, more than 256 channels with text.
 
@@ -100,7 +101,7 @@ APRS build are reused. APRS code is not compiled in.
 
 ## Plan (in order, each with host tests where the code is hardware-free)
 
-0. Branch (done), `Repeater` preset (from Fusion; splash `KD2DCM-VOICE`; main-only, no VFO B), baseline guard extended to the APRS image so neither preset can drift.
+0. Branch (done), `FMVoice` preset (from Fusion; splash `KD2DCM-VOICE`; main-only, no VFO B), baseline guard extended to the APRS image so neither preset can drift.
 1. Info table: record format, check value, codec between text and record, storage mapping, load/save. Host tests.
 2. CHIRP driver patch + CSV converter + the shared codec. Tests; manual check against a real download.
 3. The repeater card on the main screen. Bench on a radio.
@@ -111,12 +112,12 @@ APRS build are reused. APRS code is not compiled in.
 
 ## Status (2026-10-08)
 
-- Step 0 done: `Repeater` preset (89 KiB flash, 11 KiB RAM), main-only layout, no RxMode, splash `KD2DCM-VOICE`;
+- Step 0 done: `FMVoice` preset (89 KiB flash, 11 KiB RAM), main-only layout, no RxMode, splash `KD2DCM-VOICE`;
   `claude/baseline/check.sh` now also guards the APRS image against the field-tested release.
-- Step 1 done: `app/rpt_info.c` (record, frequency check, text rules, split at the first comma), storage mapping
-  (EEPROM 0xD000-0xFFFF -> bank-relative flash 0xB000), `app/rpt_store.c`. 45 C checks.
-- Step 2 done: `tools/repeater/make_driver.py` builds the CHIRP driver from armel's by anchored replacement (not kept
-  in git: GPL); `rpt_codec.py` (twin of the C codec, pinned to it); `check_csv.py`; `test_chirp_driver.py` runs the
+- Step 1 done: `app/fmv_info.c` (record, frequency check, text rules, split at the first comma), storage mapping
+  (EEPROM 0xD000-0xFFFF -> bank-relative flash 0xB000), `app/fmv_store.c`. 45 C checks.
+- Step 2 done: `tools/fmvoice/make_driver.py` builds the CHIRP driver from armel's by anchored replacement (not kept
+  in git: GPL); `fmv_codec.py` (twin of the C codec, pinned to it); `check_csv.py`; `test_chirp_driver.py` runs the
   real CHIRP code: CSV import -> image -> the C decoder, download/upload against a fake radio, and the guard that
   keeps the table off the APRS record. Not yet tried on a real radio.
 - Next: step 3, the card on the main screen.

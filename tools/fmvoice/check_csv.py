@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check a CHIRP / RepeaterBook CSV before it goes to the Repeater build.
+"""Check a CHIRP / RepeaterBook CSV before it goes to the FM Voice build.
 
     check_csv.py file.csv
 
@@ -9,14 +9,14 @@ Reports what the radio cannot keep or what is probably a mistake:
   - a Comment (the city / landmark text) longer than 45 characters: it will be cut;
   - memories above 256: they keep no text;
   - a name longer than 10 characters (CHIRP's limit for this radio);
-  - frequencies outside 144-148 and 420-450 MHz (the Repeater build neither receives nor transmits there);
+  - frequencies outside 144-148 and 420-450 MHz (the FM Voice build neither receives nor transmits there);
   - the same name on the same frequency twice.
 Exit status 0 if nothing was reported, 1 otherwise.
 """
 import csv
 import sys
 
-from rpt_codec import RPT_SLOTS, RPT_TEXT_MAX, rpt_clean
+from fmv_codec import FMV_SLOTS, FMV_TEXT_MAX, fmv_clean
 
 BANDS = ((144.0, 148.0), (420.0, 450.0))
 
@@ -44,10 +44,10 @@ def check(rows):
         if not (r.get("Tone") or "").strip():
             out.append((loc, f"{name} {freq:.4f} MHz has no tone (open repeater?)"))
         comment = r.get("Comment") or ""
-        if rpt_clean(comment)[1]:
-            out.append((loc, f"{name}: the text is longer than {RPT_TEXT_MAX} characters and will be cut"))
-        if comment.strip() and number > RPT_SLOTS:
-            out.append((loc, f"{name}: memory {number} is above {RPT_SLOTS}: it keeps no city / landmark text"))
+        if fmv_clean(comment)[1]:
+            out.append((loc, f"{name}: the text is longer than {FMV_TEXT_MAX} characters and will be cut"))
+        if comment.strip() and number > FMV_SLOTS:
+            out.append((loc, f"{name}: memory {number} is above {FMV_SLOTS}: it keeps no city / landmark text"))
         if len(name) > 10:
             out.append((loc, f"name '{name}' is longer than 10 characters"))
         key = (name, round(freq, 5))

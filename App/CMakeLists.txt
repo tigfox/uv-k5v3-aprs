@@ -167,11 +167,12 @@ enable_feature(ENABLE_SPECTRUM
     app/spectrum.c
 )
 
-# ---- Repeater (tigfox fork; Repeater preset only) ----
+# ---- FM Voice (tigfox fork; FMVoice preset only) ----
 
-enable_feature(ENABLE_REPEATER
-    app/rpt_info.c
-    app/rpt_store.c
+enable_feature(ENABLE_FMVOICE
+    app/fmv_info.c
+    app/fmv_store.c
+    app/fmv_card.c
 )
 
 # ---- APRS (tigfox fork; APRS preset only) ----

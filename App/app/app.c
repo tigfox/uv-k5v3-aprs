@@ -22,6 +22,9 @@
 #ifdef ENABLE_APRS
     #include "app/aprs_task.h"
 #endif
+#ifdef ENABLE_FMVOICE
+    #include "app/fmv_card.h"
+#endif
 
 #ifdef ENABLE_AIRCOPY
     #include "app/aircopy.h"
@@ -2056,6 +2059,9 @@ void cancelUserInputModes(void)
 void APP_TimeSlice500ms(void)
 {
     gNextTimeslice_500ms = false;
+#ifdef ENABLE_FMVOICE
+    FMV_Task500ms();
+#endif
 #ifdef ENABLE_FEAT_F4HWN_ACTION_PICKER
     if (gActionPickerKey != 0 && gActionPickerTimeout_500ms > 0 &&
         --gActionPickerTimeout_500ms == 0)

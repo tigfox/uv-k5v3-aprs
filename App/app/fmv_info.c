@@ -14,30 +14,30 @@
  */
 
 
-#include "app/rpt_info.h"
+#include "app/fmv_info.h"
 #include <string.h>
 
-uint16_t RPT_FreqCheck(uint32_t f)
+uint16_t FMV_FreqCheck(uint32_t f)
 {
     uint32_t h = f * 2654435761u;           /* Fibonacci hashing: neighbouring frequencies spread */
     uint16_t c = (uint16_t)((h >> 16) ^ (h & 0xFFFFu));
     return c == 0xFFFFu ? 0xFFFEu : c;
 }
 
-bool RPT_InfoIsErased(const uint8_t rec[RPT_INFO_RECORD])
+bool FMV_InfoIsErased(const uint8_t rec[FMV_INFO_RECORD])
 {
-    for (unsigned i = 0; i < RPT_INFO_RECORD; i++)
+    for (unsigned i = 0; i < FMV_INFO_RECORD; i++)
         if (rec[i] != 0xFF)
             return false;
     return true;
 }
 
-static void erase(uint8_t rec[RPT_INFO_RECORD])
+static void erase(uint8_t rec[FMV_INFO_RECORD])
 {
-    memset(rec, 0xFF, RPT_INFO_RECORD);
+    memset(rec, 0xFF, FMV_INFO_RECORD);
 }
 
-bool RPT_InfoEncode(uint8_t rec[RPT_INFO_RECORD], uint32_t rx_freq, const char *text, bool *cut)
+bool FMV_InfoEncode(uint8_t rec[FMV_INFO_RECORD], uint32_t rx_freq, const char *text, bool *cut)
 {
     if (cut)
         *cut = false;
@@ -45,14 +45,14 @@ bool RPT_InfoEncode(uint8_t rec[RPT_INFO_RECORD], uint32_t rx_freq, const char *
     if (!text)
         return false;
 
-    char clean[RPT_INFO_TEXT_MAX + 1];
+    char clean[FMV_INFO_TEXT_MAX + 1];
     unsigned n = 0;
     bool more = false;
     for (const unsigned char *p = (const unsigned char *)text; *p; p++) {
         char c = (*p >= 0x20 && *p <= 0x7E) ? (char)*p : '?';
         if (c == ' ' && (n == 0 || clean[n - 1] == ' '))
             continue;                          /* leading spaces and runs of spaces */
-        if (n == RPT_INFO_TEXT_MAX) {
+        if (n == FMV_INFO_TEXT_MAX) {
             more = true;
             break;
         }
@@ -65,7 +65,7 @@ bool RPT_InfoEncode(uint8_t rec[RPT_INFO_RECORD], uint32_t rx_freq, const char *
     if (more && cut)
         *cut = true;
 
-    const uint16_t chk = RPT_FreqCheck(rx_freq);
+    const uint16_t chk = FMV_FreqCheck(rx_freq);
     rec[0] = (uint8_t)(chk & 0xFF);
     rec[1] = (uint8_t)(chk >> 8);
     memcpy(rec + 2, clean, n);
@@ -73,16 +73,16 @@ bool RPT_InfoEncode(uint8_t rec[RPT_INFO_RECORD], uint32_t rx_freq, const char *
     return true;
 }
 
-bool RPT_InfoDecode(const uint8_t rec[RPT_INFO_RECORD], uint32_t rx_freq, char *out)
+bool FMV_InfoDecode(const uint8_t rec[FMV_INFO_RECORD], uint32_t rx_freq, char *out)
 {
     out[0] = 0;
     const uint16_t chk = (uint16_t)(rec[0] | (rec[1] << 8));
-    if (chk != RPT_FreqCheck(rx_freq))
+    if (chk != FMV_FreqCheck(rx_freq))
         return false;
     unsigned n = 0;
-    while (n < RPT_INFO_RECORD - 2u && rec[2 + n] != 0)
+    while (n < FMV_INFO_RECORD - 2u && rec[2 + n] != 0)
         n++;
-    if (n == 0 || n > RPT_INFO_TEXT_MAX)
+    if (n == 0 || n > FMV_INFO_TEXT_MAX)
         return false;                            /* empty, or no terminator inside the record */
     for (unsigned i = 0; i < n; i++)
         if (rec[2 + i] < 0x20 || rec[2 + i] > 0x7E)
@@ -96,13 +96,13 @@ static void trim_copy(const char *s, size_t len, char *out)
 {
     while (len > 0 && *s == ' ') { s++; len--; }
     while (len > 0 && s[len - 1] == ' ') len--;
-    if (len > RPT_LINE_MAX)
-        len = RPT_LINE_MAX;
+    if (len > FMV_LINE_MAX)
+        len = FMV_LINE_MAX;
     memcpy(out, s, len);
     out[len] = 0;
 }
 
-void RPT_InfoSplit(const char *text, char *city, char *rest)
+void FMV_InfoSplit(const char *text, char *city, char *rest)
 {
     const char *comma = strchr(text, ',');
     if (!comma) {
@@ -114,7 +114,23 @@ void RPT_InfoSplit(const char *text, char *city, char *rest)
     trim_copy(comma + 1, strlen(comma + 1), rest);
 }
 
-uint16_t RPT_InfoAddress(uint16_t channel)
+uint16_t FMV_InfoAddress(uint16_t channel)
 {
-    return channel < RPT_INFO_SLOTS ? (uint16_t)(RPT_INFO_EEPROM_ADDR + channel * RPT_INFO_RECORD) : 0u;
+    return channel < FMV_INFO_SLOTS ? (uint16_t)(FMV_INFO_EEPROM_ADDR + channel * FMV_INFO_RECORD) : 0u;
+}
+
+bool FMV_Marquee(const char *text, unsigned width, uint32_t tick, char *out)
+{
+    const unsigned len = (unsigned)strlen(text);
+    if (len <= width) {
+        memcpy(out, text, len + 1u);
+        return false;
+    }
+    const unsigned span = len - width;
+    const uint32_t cycle = FMV_MARQUEE_PAUSE + span + FMV_MARQUEE_PAUSE;
+    const uint32_t t = tick % cycle;
+    const unsigned offset = t < FMV_MARQUEE_PAUSE ? 0u : (t < FMV_MARQUEE_PAUSE + span ? (unsigned)(t - FMV_MARQUEE_PAUSE) : span);
+    memcpy(out, text + offset, width);
+    out[width] = 0;
+    return true;
 }

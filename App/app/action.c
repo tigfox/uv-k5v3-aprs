@@ -699,8 +699,8 @@ void ACTION_SetRxMode(uint8_t mode)
 
 void ACTION_RxMode(void)
 {
-#ifdef ENABLE_REPEATER
-    return;     // the Repeater build listens on the main VFO only: no dual watch, no cross band
+#ifdef ENABLE_FMVOICE
+    return;     // the FM Voice build listens on the main VFO only: no dual watch, no cross band
 #endif
 #ifdef ENABLE_FEAT_F4HWN_FULL_WATCH
     uint8_t mode = ACTION_GetRxMode() + 1;

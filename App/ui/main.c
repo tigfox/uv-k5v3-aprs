@@ -45,6 +45,9 @@
 #include "ui/helper.h"
 #include "ui/inputbox.h"
 #include "ui/main.h"
+#ifdef ENABLE_FMVOICE
+    #include "app/fmv_card.h"
+#endif
 #ifdef ENABLE_APRS
     #include "app/aprs_task.h"
 #endif
@@ -69,7 +72,7 @@ center_line_t center_line = CENTER_LINE_NONE;
 
     static bool isMainOnly()
     {
-#ifdef ENABLE_REPEATER
+#ifdef ENABLE_FMVOICE
         return true;        // one VFO on the screen, always
 #endif
 #ifdef ENABLE_APRS
@@ -2583,7 +2586,13 @@ void UI_DisplayMain(void)
         }
     }
 
-#ifdef ENABLE_FEAT_F4HWN
+#ifdef ENABLE_FMVOICE
+    // idle (the center line is free): the repeater's city / landmark, scrolling if it is long
+    if (center_line == CENTER_LINE_NONE && !gDTMF_InputMode)
+        FMV_CardRow(5);
+#endif
+
+#if defined(ENABLE_FEAT_F4HWN) && !defined(ENABLE_FMVOICE)     // the FM Voice build has no VFO B: no "VFO A" tag
     //#ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
     //if(gEeprom.MENU_LOCK == false)
     //{

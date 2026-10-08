@@ -1,6 +1,6 @@
-test_rpt_info
+test_fmv_info
 *.dSYM
 __pycache__
 .pytest_cache
-rpt_vectors
+fmv_vectors
 *.bin

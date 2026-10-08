@@ -82,12 +82,12 @@ static const AddrMapping_t ADDR_MAPPINGS[] = {
                                                 // [0x08..0x407] 128x64 monochrome bitmap, 1024 Bytes
                                                 // ST7565-native: 8 pages * 128 columns, column-major LSB-top
 
-#if defined(ENABLE_APRS) && defined(ENABLE_REPEATER)
-    #error "the APRS and Repeater builds both use EEPROM addresses 0xD000 and up: build one or the other"
+#if defined(ENABLE_APRS) && defined(ENABLE_FMVOICE)
+    #error "the APRS and FM Voice builds both use EEPROM addresses 0xD000 and up: build one or the other"
 #endif
 
-#ifdef ENABLE_REPEATER
-    // Repeater info table (app/rpt_info.h): 256 records x 48 bytes for the memory channels, in the free sectors of
+#ifdef ENABLE_FMVOICE
+    // FM Voice info table (app/fmv_info.h): 256 records x 48 bytes for the memory channels, in the free sectors of
     // each config bank (bank-relative 0xB000-0xDFFF, past the config footprint that ends at 0xA178), so every
     // bank has its own and other firmwares never see it. 0xD000 + 0x3000 is the end of the 16-bit address space.
     _MK_MAPPING(0x00B000, 0xD000, 0x10000),

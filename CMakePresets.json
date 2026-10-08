@@ -177,10 +177,10 @@
             }
         },
         {
-            "name": "Repeater",
+            "name": "FMVoice",
             "inherits": "Fusion",
             "cacheVariables": {
-                "ENABLE_REPEATER": true,
+                "ENABLE_FMVOICE": true,
                 "ENABLE_US_2M_70CM_ONLY": true,
                 "ENABLE_SPECTRUM": false,
                 "ENABLE_FEAT_F4HWN_SPECTRUM": false,
@@ -188,8 +188,8 @@
                 "ENABLE_VOICE": false,
                 "ENABLE_FEAT_F4HWN_FULL_WATCH": false,
                 "DISPLAY_VERSION_OVERRIDE": "KD2DCM-VOICE",
-                "EDITION_STRING": "Voice",
-                "TARGET": "f4hwn.repeater"
+                "EDITION_STRING": "FM Voice",
+                "TARGET": "f4hwn.fmvoice"
             }
         },
         {
@@ -260,8 +260,8 @@
             "configurePreset": "Fusion"
         },
         {
-            "name": "Repeater",
-            "configurePreset": "Repeater"
+            "name": "FMVoice",
+            "configurePreset": "FMVoice"
         },
         {
             "name": "APRS",
