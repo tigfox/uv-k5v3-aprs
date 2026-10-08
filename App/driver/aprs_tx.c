@@ -20,6 +20,7 @@
 #include "app/aprs_modem.h"
 #include "app/aprs_store.h"
 #include "driver/aprs_rx.h"
+#include "app/chFrScanner.h"
 #include "driver/bk4819.h"
 #include "frequencies.h"
 #include "misc.h"
@@ -57,6 +58,13 @@ aprs_tx_result_t APRS_TxCheck(void)
         return APRS_TX_DENIED;
     if (gBatteryDisplayLevel == 0 || gBatteryDisplayLevel > 6)
         return APRS_TX_DENIED;
+    /* not while the radio is doing something else with the VFOs and the receiver */
+    if (gScanStateDir != SCAN_OFF || gCssBackgroundScan || SerialConfigInProgress())
+        return APRS_TX_DENIED;
+#ifdef ENABLE_FMRADIO_EMBEDDED
+    if (gFmRadioMode)
+        return APRS_TX_DENIED;
+#endif
     return APRS_TX_OK;
 }
 
@@ -90,6 +98,7 @@ aprs_tx_result_t APRS_TxSend(const uint8_t *frame, uint16_t len)
     gCurrentVfo = gTxVfo;                        // always the main VFO
 
     RADIO_SetTxParameters();                     // carrier and PA on, power from the Power menu
+    BK4819_SetCompander(0);                      // a compressor would distort the tones and their twist
     BK4819_WriteRegister(BK4819_REG_51, 0);      // no CTCSS/DCS under the tones
     BK4819_TransmitTone(false, 1200);            // tone path on, microphone off, 50 ms settle
     bool space = false;

@@ -50,7 +50,6 @@
     #include "app/aprs_task.h"
     #include "app/aprs_menu_edit.h"
     #include "app/aprs_items.h"
-    #include "app/aprs_menu_text.h"
     static_assert(MENU_APRS_LAST - MENU_APRS_FIRST + 1 == APRS_MI_COUNT, "APRS menu ids must match APRS_MI_*");
 #endif
 #ifdef ENABLE_FEAT_F4HWN_MULTIBOOT

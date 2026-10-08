@@ -45,7 +45,7 @@ typedef struct {
 
 aprs_settings_t APRS_SettingsDefaults(void);
 bool APRS_SettingsValid(const aprs_settings_t *s);
-bool APRS_CallIsSet(const aprs_settings_t *s);   /* valid and not N0CALL */
+bool APRS_CallIsSet(const aprs_settings_t *s);   /* valid and plausible: >= 3 characters, a digit and a letter, not N0CALL / NOCALL */
 
 /* Encode fails (returns false, out untouched) if s is invalid. */
 bool APRS_SettingsEncode(const aprs_settings_t *s, uint8_t out[APRS_RECORD_SIZE]);

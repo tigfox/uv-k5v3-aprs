@@ -30,7 +30,7 @@
  * per-tone AGC, then 3 slicers (mark/space weights 2:3, 1:1, 3:2), each with its own DPLL,
  * NRZI, HDLC and FCS. A frame counts only with a good FCS and as a UI frame. */
 
-#define APRS_DEMOD_FRAME_MAX 330u   /* 10 addresses + control + PID + 256 info + FCS */
+#define APRS_DEMOD_FRAME_MAX 256u   /* 8 digipeaters + control + PID + 200 info + FCS: RAM (3 slicers + queue) is tight; armel's app allows 330 */
 #define APRS_DEMOD_FS        9600u
 #define APRS_DEMOD_SLICERS   3u
 #define APRS_DEMOD_ADC_BIAS  2048u  /* PA4 is held at mid-scale by the DAC */

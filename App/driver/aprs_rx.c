@@ -229,6 +229,7 @@ void TIM6_LPTIM1_DAC_IRQHandler(void)
             } else {
                 gQueue[head].len = len;
                 memcpy(gQueue[head].data, APRS_DemodFrame(&gDemod), len);
+                __DMB();                // the frame is written before the main loop can see it
                 gHead = next;
             }
         }

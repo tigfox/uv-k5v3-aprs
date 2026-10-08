@@ -38,6 +38,12 @@ void APRS_StationRearm(aprs_station_t *st, const aprs_settings_t *s)
     st->beacon_countdown = (s->aprs_on && s->interval_s > 0) ? APRS_BEACON_FIRST_TICKS : 0;
 }
 
+void APRS_StationClearPending(aprs_station_t *st)
+{
+    st->msg_pending = st->beacon_pending = st->ack_pending = false;
+    st->pending_age = 0;
+}
+
 void APRS_StationSetMsgTo(aprs_station_t *st, const char *to)
 {
     copy_str(st->msgto, sizeof st->msgto, to);
@@ -93,14 +99,25 @@ bool APRS_StationOnFrame(aprs_station_t *st, const aprs_settings_t *s, const uin
 
 aprs_action_t APRS_StationTick(aprs_station_t *st)
 {
+    if (st->quiet > 0)
+        st->quiet--;
     if (st->beacon_countdown > 0 && --st->beacon_countdown == 0) {
         st->beacon_pending = true;
         /* the interval is re-armed when the beacon goes out (APRS_StationSent) */
     }
+    if (!(st->ack_pending || st->msg_pending || st->beacon_pending)) {
+        st->pending_age = 0;
+        return APRS_ACT_NONE;
+    }
+    if (++st->pending_age > APRS_PENDING_MAX_SLOTS) {      // the channel never cleared: give up
+        APRS_StationClearPending(st);
+        return APRS_ACT_NONE;
+    }
+    if (st->quiet > 0)
+        return APRS_ACT_NONE;                               // the minimum gap between transmissions
     if (st->ack_pending)    return APRS_ACT_ACK;
     if (st->msg_pending)    return APRS_ACT_MSG;
-    if (st->beacon_pending) return APRS_ACT_BEACON;
-    return APRS_ACT_NONE;
+    return APRS_ACT_BEACON;
 }
 
 uint16_t APRS_StationBuild(aprs_station_t *st, const aprs_settings_t *s, aprs_action_t act, uint8_t *out)
@@ -121,6 +138,8 @@ uint16_t APRS_StationBuild(aprs_station_t *st, const aprs_settings_t *s, aprs_ac
 
 void APRS_StationSent(aprs_station_t *st, const aprs_settings_t *s, aprs_action_t act)
 {
+    st->pending_age = 0;
+    st->quiet = APRS_TX_MIN_GAP_SLOTS;
     switch (act) {
     case APRS_ACT_ACK:
         st->ack_pending = false;

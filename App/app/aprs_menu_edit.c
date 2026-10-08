@@ -92,6 +92,8 @@ static void commit(void)
 
 bool APRS_MenuEditKey(KEY_Code_t key, bool pressed, bool held)
 {
+    if (gActive && !gIsInSubMenu)
+        gActive = false;                  // the menu timed out or the screen changed under the editor
     if (!gActive) {
         const int kind = editable_kind(UI_MENU_GetCurrentMenuId());
         if (kind < 0 || gIsInSubMenu || key != KEY_MENU || !pressed || held)
@@ -123,7 +125,10 @@ bool APRS_MenuEditKey(KEY_Code_t key, bool pressed, bool held)
         APRS_EditNext(&gE);
         break;
     case KEY_EXIT:
-        if (held) return true;
+        if (held) {                       // a long press cancels, whatever has been typed
+            leave();
+            return true;
+        }
         if (!APRS_EditBack(&gE))
             leave();                      // empty field: EXIT leaves the editor
         break;

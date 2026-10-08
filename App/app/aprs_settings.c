@@ -86,7 +86,16 @@ bool APRS_SettingsValid(const aprs_settings_t *s)
 
 bool APRS_CallIsSet(const aprs_settings_t *s)
 {
-    return APRS_SettingsValid(s) && strcmp(s->call, "N0CALL") != 0;
+    if (!APRS_SettingsValid(s))
+        return false;
+    /* a real amateur callsign has at least 3 characters with a digit and a letter; the
+     * placeholders N0CALL and NOCALL are refused */
+    unsigned digits = 0, letters = 0;
+    const size_t n = strlen(s->call);
+    for (size_t i = 0; i < n; i++) {
+        if (s->call[i] >= '0' && s->call[i] <= '9') digits++; else letters++;
+    }
+    return n >= 3 && digits > 0 && letters > 0 && strcmp(s->call, "N0CALL") != 0 && strcmp(s->call, "NOCALL") != 0;
 }
 
 uint8_t APRS_DigiByteEncode(const aprs_settings_t *s)

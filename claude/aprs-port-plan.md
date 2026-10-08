@@ -377,6 +377,19 @@ blocking in the key handler. Received packets are not drawn on the main screen y
 last callsign heard. RAM is now 13.5 of 16 KiB (the TX bit buffers are static, so the stack is not deeper):
 watch the stack in step 10.
 
+### Step 4-5 review fixes (2026-10-07)
+
+Fixed: the menu editor no longer wedges after a menu timeout (state resets when the sub-menu closes; a
+long EXIT cancels); no transmission while scanning, a CSS scan, serial configuration, or the FM radio;
+TX compander forced off; `APRS_CallIsSet` now needs >= 3 characters with a digit and a letter (NOCALL
+and N0CALL refused); queued transmissions are dropped after a minute of busy channel and when APRS is
+switched off; at least 5 s between our transmissions (an ack storm cannot hold the carrier); the beacon
+timer re-arms only when APRS or Intv changes; ack line numbers are echoed only if alphanumeric; `is_ack`
+needs the word alone; receive frame buffers cut to 256 bytes (RAM 13.4 of 16 KiB). **Open policy
+decision:** nothing restricts an automatic transmission to an APRS frequency; it goes out on whatever the
+main VFO is tuned to inside 144-148 / 420-450 MHz. Carrier sense is the squelch only (a CTCSS-gated
+signal would not be heard). No TX LED or burst counter yet.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

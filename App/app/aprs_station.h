@@ -46,9 +46,16 @@ typedef struct {
     char     last_msg[APRS_RXTEXT_MAX + 1];      /* the last message addressed to us, for RdMsg */
     uint16_t beacon_countdown;                   /* 500 ms ticks to the next auto-beacon, 0 = none */
     uint32_t heard_msgs, sent_msgs, sent_beacons;
+    uint16_t pending_age;                        /* slots (500 ms) the oldest request has waited */
+    uint16_t quiet;                              /* slots left before the next transmission is allowed */
 } aprs_station_t;
 
+#define APRS_PENDING_MAX_SLOTS 120u    /* a request the channel kept busy for a minute is dropped */
+#define APRS_TX_MIN_GAP_SLOTS  10u     /* at least 5 s between our transmissions, whoever asks */
+
 void APRS_StationInit(aprs_station_t *st, const aprs_settings_t *s);
+/* APRS was switched off: forget everything waiting to go out. */
+void APRS_StationClearPending(aprs_station_t *st);
 /* (Re)arm the auto-beacon timer from the interval in s. Call when APRS or Intv changes. */
 void APRS_StationRearm(aprs_station_t *st, const aprs_settings_t *s);
 /* The operator edited MsgTo / Msg. */

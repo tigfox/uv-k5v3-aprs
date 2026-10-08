@@ -66,6 +66,17 @@ static void test_rxinfo(void)
     len = with_fcs(f, APRS_BuildMessage(f, &o, "W1ABC-7", "no number", 0));
     CHECK(APRS_RxInfo(f, len, &m, 0, 0, &info) && info.to_me && info.ack_seq[0] == 0);
 
+    {   /* a line number with framing characters is shown but never echoed back in an ack */
+        uint8_t h[APRS_BUILD_MAX + 4];
+        uint16_t hl = APRS_BuildHeader(h, &o, false);
+        memcpy(h + hl, ":W1ABC-7  :hi{1}2", 17); hl = (uint16_t)(hl + 17);
+        len = with_fcs(h, hl);
+        CHECK(APRS_RxInfo(h, len, &m, 0, 0, &info) && info.to_me && info.ack_seq[0] == 0);
+        hl = APRS_BuildHeader(h, &o, false);
+        memcpy(h + hl, ":W1ABC-7  :acknowledged all", 27); hl = (uint16_t)(hl + 27);
+        len = with_fcs(h, hl);
+        CHECK(APRS_RxInfo(h, len, &m, 0, 0, &info) && info.to_me && !info.is_ack);   /* not an ack: a word */
+    }
     len = with_fcs(f, APRS_BuildAck(f, &o, "W1ABC-7", "9"));
     CHECK(APRS_RxInfo(f, len, &m, 0, 0, &info) && info.to_me && info.is_ack && info.ack_seq[0] == 0);
     CHECK_STR(info.text, "N0CALL-3>ack9");
@@ -135,6 +146,39 @@ static void test_beacon_timer(void)
     CHECK(!st.beacon_pending && st.beacon_countdown == 1200 && st.sent_beacons == 0);
 }
 
+static void test_limits(void)
+{
+    aprs_settings_t s = me();
+    aprs_station_t st;
+    APRS_StationInit(&st, &s);
+    /* the minimum gap: three acks queued back to back go out 5 s apart */
+    aprs_rx_info_t info;
+    aprs_settings_t o = other("N0CALL", 3);
+    uint8_t f[APRS_BUILD_MAX + 4];
+    unsigned sent = 0, slots = 0;
+    for (int i = 0; i < 3; i++) {
+        const uint16_t len = with_fcs(f, APRS_BuildMessage(f, &o, "W1ABC-7", "x", (uint8_t)(i + 1)));
+        CHECK(APRS_StationOnFrame(&st, &s, f, len, &info));
+        for (unsigned guard = 0; guard < 1000; guard++) {
+            slots++;
+            const aprs_action_t a = APRS_StationTick(&st);
+            if (a == APRS_ACT_ACK) { APRS_StationSent(&st, &s, a); sent++; break; }
+        }
+    }
+    CHECK(sent == 3 && slots == 1 + 2 * APRS_TX_MIN_GAP_SLOTS);   /* the first at once, then 5 s apart */
+
+    /* a request the channel never let through expires after a minute, and APRS off clears everything */
+    APRS_StationInit(&st, &s);
+    APRS_StationQueueBeacon(&st);
+    unsigned n = 0;
+    while (APRS_StationTick(&st) == APRS_ACT_BEACON && n < 1000) n++;   // never sent: the channel is busy
+    CHECK(n == APRS_PENDING_MAX_SLOTS && !st.beacon_pending);
+    APRS_StationQueueBeacon(&st);
+    st.ack_pending = true; st.msg_pending = true;
+    APRS_StationClearPending(&st);
+    CHECK(APRS_StationTick(&st) == APRS_ACT_NONE && !st.beacon_pending && !st.ack_pending && !st.msg_pending);
+}
+
 static void test_messages(void)
 {
     aprs_settings_t s = me(), o = other("N0CALL", 3);
@@ -172,12 +216,15 @@ static void test_messages(void)
     CHECK_STR(st.msgto, "N0CALL-3"); CHECK(st.dirty);
     CHECK_STR(st.last_msg, "N0CALL-3>meet at the ridge");
     CHECK(APRS_StationMsgPages(&st) == 2);                       /* 26 characters, 16 a page */
+    st.quiet = 0;                                                /* (the minimum gap has its own test) */
     CHECK(APRS_StationTick(&st) == APRS_ACT_ACK);
     n = APRS_StationBuild(&st, &s, APRS_ACT_ACK, g);
     CHECK_STR(tnc2(g, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1::N0CALL-3 :ack42");
     APRS_StationSent(&st, &s, APRS_ACT_ACK);
+    st.quiet = 0;
     CHECK(APRS_StationTick(&st) == APRS_ACT_MSG);                /* then the message, then the beacon */
     APRS_StationSent(&st, &s, APRS_ACT_MSG);
+    st.quiet = 0;
     CHECK(APRS_StationTick(&st) == APRS_ACT_BEACON);
     APRS_StationSent(&st, &s, APRS_ACT_BEACON);
     CHECK(APRS_StationTick(&st) == APRS_ACT_NONE);
@@ -210,7 +257,7 @@ static void test_messages(void)
 
 int main(void)
 {
-    test_rxinfo(); test_beacon_timer(); test_messages();
+    test_rxinfo(); test_beacon_timer(); test_limits(); test_messages();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;
 }

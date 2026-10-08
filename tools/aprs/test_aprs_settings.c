@@ -34,6 +34,13 @@ static void test_defaults(void)
     CHECK(APRS_SettingsValid(&d));
     aprs_settings_t s = sample();
     CHECK(APRS_CallIsSet(&s));
+    strcpy(s.call, "NOCALL");   CHECK(!APRS_CallIsSet(&s));
+    strcpy(s.call, "A");        CHECK(!APRS_CallIsSet(&s));
+    strcpy(s.call, "AB");       CHECK(!APRS_CallIsSet(&s));
+    strcpy(s.call, "ABCDEF");   CHECK(!APRS_CallIsSet(&s));      /* no digit */
+    strcpy(s.call, "123456");   CHECK(!APRS_CallIsSet(&s));      /* no letter */
+    strcpy(s.call, "K1A");      CHECK(APRS_CallIsSet(&s));
+    strcpy(s.call, "W1AW");     CHECK(APRS_CallIsSet(&s));
 }
 
 static void test_roundtrip(void)

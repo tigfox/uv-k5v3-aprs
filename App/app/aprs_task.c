@@ -52,6 +52,7 @@ static void force_main_only(void)
 void APRS_TaskInit(void)
 {
     APRS_StationInit(&gStation, &gAprsSettings);
+    APRS_TaskSettingsChanged();                    // remember what the timer was armed for
     if (gAprsSettings.aprs_on) {
         force_main_only();
         APRS_RxStart();
@@ -63,8 +64,18 @@ bool APRS_IsOn(void)
     return APRS_RxRunning();
 }
 
+/* Re-arm the beacon timer only when what drives it changed (APRS on/off, Intv): saving any other
+ * setting must not push the next beacon out, nor bring one forward. */
 void APRS_TaskSettingsChanged(void)
 {
+    static bool     known;
+    static uint8_t  last_on;
+    static uint16_t last_interval;
+    if (known && last_on == gAprsSettings.aprs_on && last_interval == gAprsSettings.interval_s)
+        return;
+    known = true;
+    last_on = gAprsSettings.aprs_on;
+    last_interval = gAprsSettings.interval_s;
     APRS_StationRearm(&gStation, &gAprsSettings);
 }
 
@@ -79,6 +90,7 @@ bool APRS_SetOn(bool on)
         APRS_RxStart();
     } else {
         APRS_RxStop();
+        APRS_StationClearPending(&gStation);       // nothing queued may go out later
     }
     APRS_TaskSettingsChanged();
     return true;
@@ -142,7 +154,7 @@ static void transmit_slot(void)
 
 void APRS_Task10ms(void)
 {
-    aprs_rx_frame_t f;
+    static aprs_rx_frame_t f;                      // static: 332 bytes off the stack
     while (APRS_RxPop(&f))
         on_frame(&f);
 

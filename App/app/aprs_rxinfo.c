@@ -49,18 +49,27 @@ bool APRS_RxInfo(const uint8_t *frame, uint16_t len, const aprs_settings_t *s,
 
     uint8_t o = 0;
     if (out->to_me) {
-        out->is_ack = ilen >= 14 && ((ip[11] == 'a' && ip[12] == 'c' && ip[13] == 'k') ||
-                                     (ip[11] == 'r' && ip[12] == 'e' && ip[13] == 'j'));
+        /* "ackNN" / "rejNN": the word and at most 5 characters of line number, nothing more */
+        out->is_ack = ilen >= 14 && ilen <= 11u + 3u + APRS_ACK_SEQ_MAX &&
+                      ((ip[11] == 'a' && ip[12] == 'c' && ip[13] == 'k') ||
+                       (ip[11] == 'r' && ip[12] == 'e' && ip[13] == 'j'));
         memcpy(out->text, out->from, n);
         o = n;
         out->text[o++] = '>';
         for (uint16_t i = 11; i < ilen && o < APRS_RXTEXT_MAX; i++) {
             if (ip[i] == '{') {                    /* "{nn" line number: acknowledge it, do not show it */
                 if (!out->is_ack) {
+                    /* the line number is sent straight back in the ack: letters and digits only,
+                     * otherwise do not acknowledge (never echo control or framing characters) */
                     uint8_t k = 0;
-                    for (uint16_t j = i + 1u; j < ilen && k < APRS_ACK_SEQ_MAX; j++)
-                        out->ack_seq[k++] = (char)ip[j];
-                    out->ack_seq[k] = 0;
+                    bool clean = true;
+                    for (uint16_t j = i + 1u; j < ilen && k < APRS_ACK_SEQ_MAX; j++) {
+                        const char c = (char)ip[j];
+                        if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')))
+                            clean = false;
+                        out->ack_seq[k++] = c;
+                    }
+                    out->ack_seq[clean ? k : 0] = 0;
                 }
                 break;
             }
