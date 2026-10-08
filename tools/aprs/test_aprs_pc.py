@@ -291,3 +291,13 @@ def test_monitor_lines():
     assert aprs_pc.monitor_line(b"DIGI:RPT W1ABC") == "    digi RPT W1ABC"
     assert aprs_pc.monitor_line(b"APRSRAW:AABB") == "    raw AABB"
     assert aprs_pc.monitor_line(b"garbage") is None
+
+
+def test_the_example_site_file_is_valid():
+    """tools/aprs/site.example.json is what the walkthrough tells people to copy."""
+    import os
+    path = os.path.join(os.path.dirname(__file__), "site.example.json")
+    with open(path) as f:
+        st = aprs_pc.settings_from_json(json.load(f))
+    assert (st.call, st.ssid, st.aprs_on, st.digi_mode, st.beacon_type) == ("KD2DCM", 1, True, 2, 1)
+    aprs_pc.pack_record(st)

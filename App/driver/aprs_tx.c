@@ -99,6 +99,7 @@ aprs_tx_result_t APRS_TxSend(const uint8_t *frame, uint16_t len)
 
     RADIO_SetTxParameters();                     // carrier and PA on, power from the Power menu
     BK4819_SetCompander(0);                      // a compressor would distort the tones and their twist
+    BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, true);   // the red TX light (RADIO_SetupRegisters turns it off again)
     BK4819_WriteRegister(BK4819_REG_51, 0);      // no CTCSS/DCS under the tones
     BK4819_TransmitTone(false, 1200);            // tone path on, microphone off, 50 ms settle
     bool space = false;

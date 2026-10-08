@@ -73,6 +73,14 @@ digi_result_t DIGI_Consider(const uint8_t *frame, uint16_t len, uint32_t now,
 // it), else NULL. Report the outcome with DIGI_Sent.
 uint8_t *DIGI_Due(uint32_t now, bool busy, uint16_t *len);
 void DIGI_Sent(bool on_air);
+
+// A cap on how much an unattended digi transmits: at most DIGI_RATE_MAX repeats in any DIGI_RATE_WINDOW ticks
+// (20 in 60 s is about a 33 % duty cycle at ~1 s a repeat). DIGI_RateOk says whether another may start now;
+// DIGI_RateNote records one that did. A repeat held back long enough is dropped like one for a busy channel.
+#define DIGI_RATE_MAX    20u
+#define DIGI_RATE_WINDOW 6000u   // 60 s in 10 ms ticks
+bool DIGI_RateOk(uint32_t now);
+void DIGI_RateNote(uint32_t now);
 // Forget everything and set the mode, hop limit and delay choice (start-up and tests).
 void DIGI_Reset(uint8_t mode, uint8_t hops, uint8_t delay);
 const uint8_t *DIGI_QueuedFrame(void);   // the frame DIGI_Due last handed out or holds

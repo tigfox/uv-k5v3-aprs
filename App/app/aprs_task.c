@@ -240,7 +240,8 @@ static void digi_poll(void)
 {
     if (!DIGI_HasQueued() || gCurrentFunction == FUNCTION_TRANSMIT || gPttIsPressed)
         return;
-    const bool busy = APRS_RxBusy() || (gEeprom.SQUELCH_LEVEL > 0 && FUNCTION_IsRx());
+    // a channel in use, or the unattended-transmit cap reached, holds the repeat back (and drops it after 5 s)
+    const bool busy = APRS_RxBusy() || (gEeprom.SQUELCH_LEVEL > 0 && FUNCTION_IsRx()) || !DIGI_RateOk(gTicks);
     uint16_t n = 0;
     const uint16_t dropped = gAPRS_DigiStats[DIGI_ST_DROPPED];
     uint8_t *frame = DIGI_Due(gTicks, busy, &n);
@@ -249,6 +250,8 @@ static void digi_poll(void)
     if (frame == NULL)
         return;
     const bool sent = APRS_TxSend(frame, n) == APRS_TX_OK;
+    if (sent)
+        DIGI_RateNote(gTicks);
     DIGI_Sent(sent);                                         // refused (band, battery, scan): counted as dropped
     APRS_SerialDigi(sent ? "RPT" : "NOTX", frame);
     if (sent && gHaveLast && memcmp(&frame[7], gLastSrc, 6) == 0 && ((frame[13] ^ gLastSrc[6]) & 0x1Eu) == 0)

@@ -1,0 +1,265 @@
+<title>UV-K5 V3 APRS Radio Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: an equipment reference card - two printed sides, numbered procedures
+   in a single column, key presses drawn as keycaps, menu numbers as tags. */
+:root {
+  /* one light palette on purpose: this card is printed on white paper */
+  --paper: #ffffff;
+  --ink: #111111;
+  --muted: #333333;
+  --rule: #a6a6a6;
+  --accent: #0b3a82;      /* dark blue headings; prints as near-black in mono */
+  --tag-bg: #ececec;
+  --key-bg: #ffffff;
+  --field: #555555;
+  color-scheme: light;
+
+  --f-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --s-1: 0.25rem; --s-2: 0.5rem; --s-3: 0.75rem; --s-4: 1rem; --s-5: 1.5rem; --s-6: 2rem;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 0.95rem/1.5 var(--f-body);
+  padding-inline: 16px;
+  padding-block: var(--s-5);
+}
+.card { max-width: 46rem; margin-inline: auto; display: grid; gap: var(--s-5); }
+
+/* sections */
+section { display: grid; gap: var(--s-3); break-inside: avoid; }
+h2 {
+  margin: 0; display: flex; align-items: baseline; gap: var(--s-2);
+  font: 700 1.35rem/1.1 var(--f-display); text-transform: uppercase; letter-spacing: 0.02em;
+  color: var(--accent); border-bottom: 1px solid var(--rule); padding-bottom: var(--s-1);
+}
+h2 .n { font: 600 0.85rem/1 var(--f-mono); color: var(--ink); background: var(--tag-bg); padding: 0.2rem 0.4rem; border-radius: 3px; }
+h3 { margin: 0; font: 700 1rem/1.2 var(--f-display); text-transform: uppercase; letter-spacing: 0.04em; }
+p { margin: 0; }
+.note { color: var(--muted); font-size: 0.88rem; }
+.note strong { color: var(--ink); }
+
+/* keycaps and menu tags */
+kbd {
+  font: 600 0.75rem/1 var(--f-mono); display: inline-block; padding: 0.18rem 0.38rem 0.14rem;
+  background: var(--key-bg); border: 1px solid var(--ink); border-bottom-width: 2px; border-radius: 4px;
+  white-space: nowrap;
+}
+.m { font: 600 0.78rem/1 var(--f-mono); background: var(--tag-bg); color: var(--ink); padding: 0.16rem 0.32rem; border-radius: 3px; white-space: nowrap; }
+.v { font: 600 0.8rem/1 var(--f-mono); white-space: nowrap; }
+code { font: 500 0.8rem/1 var(--f-mono); }
+
+/* steps */
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: st; display: grid; gap: var(--s-2); }
+ol.steps > li { counter-increment: st; display: grid; grid-template-columns: 1.6rem 1fr; gap: var(--s-2); }
+ol.steps > li::before {
+  content: counter(st); font: 700 1rem/1.35 var(--f-display); color: var(--accent); text-align: right;
+}
+ol.steps > li > div { min-width: 0; }
+
+/* tables */
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+th, td { text-align: left; padding: 0.3rem 0.5rem 0.3rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 600 0.68rem/1.2 var(--f-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+td.blank { min-width: 6rem; }
+td.blank span { display: block; height: 1.1rem; border-bottom: 1px solid var(--field); }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: var(--s-4); }
+.cols > * { min-width: 0; }
+.box { border: 1px solid var(--rule); border-radius: 4px; padding: var(--s-3); display: grid; gap: var(--s-2); }
+.screen {
+  font: 600 0.82rem/1.3 var(--f-mono); background: var(--key-bg); border: 1px solid var(--ink);
+  border-radius: 3px; padding: 0.3rem 0.5rem; display: inline-block; white-space: nowrap;
+}
+.page-break { display: none; }
+footer { border-top: 1px solid var(--rule); padding-top: var(--s-2); color: var(--muted); font-size: 0.75rem; }
+
+@media print {
+  @page { size: auto; margin: 11mm 12mm; }
+  body { padding: 0; font-size: 9.2pt; }
+  .card { max-width: none; gap: 9pt; }
+  .page-break { display: block; break-before: page; height: 0; }
+  section { gap: 5pt; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="card">
+
+  <section>
+    <h2>Using the menu</h2>
+    <div class="cols">
+      <ol class="steps">
+        <li><div>Press <kbd>MENU</kbd>. Scroll with <kbd>▲</kbd> <kbd>▼</kbd> (UV-K1: <kbd>◀</kbd> <kbd>▶</kbd>), or type the item's two-digit number (for example <kbd>0</kbd><kbd>8</kbd> for <span class="m">08 Call</span>).</div></li>
+        <li><div>Press <kbd>MENU</kbd> to edit the item.</div></li>
+        <li><div>Change the value with <kbd>▲</kbd> <kbd>▼</kbd>. Text fields are spelled one character at a time (below).</div></li>
+        <li><div><kbd>MENU</kbd> saves. <kbd>EXIT</kbd> cancels (a text field: <kbd>EXIT</kbd> steps back; hold it to cancel).</div></li>
+        <li><div><kbd>EXIT</kbd> again leaves the menu. It also leaves by itself after a short time.</div></li>
+      </ol>
+      <div class="box">
+        <h3>The menu</h3>
+        <div class="tbl"><table>
+          <tr><td><span class="m">01</span> APRS</td><td><span class="m">08</span> Call</td><td><span class="m">15</span> BEACON</td></tr>
+          <tr><td><span class="m">02</span> Digi</td><td><span class="m">09</span> SSID</td><td><span class="m">16</span> Power</td></tr>
+          <tr><td><span class="m">03</span> DHops</td><td><span class="m">10</span> Loc</td><td><span class="m">17</span> Sql</td></tr>
+          <tr><td><span class="m">04</span> DDly</td><td><span class="m">11</span> Cmnt</td><td><span class="m">18</span> W/N</td></tr>
+          <tr><td><span class="m">05</span> BcnTy</td><td><span class="m">12</span> MsgTo</td><td><span class="m">19</span> Step</td></tr>
+          <tr><td><span class="m">06</span> DStat</td><td><span class="m">13</span> Msg</td><td><span class="m">20</span> TxTOut</td></tr>
+          <tr><td><span class="m">07</span> Intv</td><td><span class="m">14</span> Send</td><td><span class="m">21</span> BusyCL</td></tr>
+          <tr><td><span class="m">22</span> RdMsg</td><td><span class="m">23</span> BatSav</td><td><span class="m">24</span> BatTyp</td></tr>
+          <tr><td><span class="m">25</span> BatTxt</td><td><span class="m">26</span> KeyLck</td><td></td></tr>
+        </table></div>
+        <p class="note">Everything else in the radio is set with a programming cable (UV Studio / CHIRP). The numbers follow this list, so check the on-screen count (<code>NN/26</code>) if one looks off.</p>
+      </div>
+    </div>
+    <div class="box">
+      <h3>Spelling text: Call, Cmnt, MsgTo, Msg</h3>
+      <ol class="steps">
+        <li><div>The field opens empty. A <code>^</code> under the line marks the character you are on.</div></li>
+        <li><div><kbd>▲</kbd> <kbd>▼</kbd> choose the character: blank, <code>A</code>–<code>Z</code>, <code>0</code>–<code>9</code>, then <code>- . / ? ! @ : , '</code>. Hold a key to scroll. The digit keys type a digit directly and move on.</div></li>
+        <li><div><kbd>*</kbd> keeps the character and moves to the next one.</div></li>
+        <li><div><kbd>EXIT</kbd> steps back one character (hold it to cancel). <kbd>MENU</kbd> saves the text.</div></li>
+      </ol>
+      <p class="note">Pressing <kbd>MENU</kbd> on an empty field keeps the old text. A callsign is up to 6 characters <strong>without</strong> the SSID; the message text is up to 30; a comment up to 43.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">A</span> Set the callsign</h2>
+    <ol class="steps">
+      <li><div><span class="m">08 Call</span>: spell your callsign (no SSID).</div></li>
+      <li><div><span class="m">09 SSID</span>: choose 0–15. Give <strong>each radio its own SSID</strong>, for example <code>-1</code> for the digi and <code>-7</code> for a handheld. Two stations on the same call <em>and</em> SSID count as one.</div></li>
+    </ol>
+    <p class="note">The radio <strong>will not transmit</strong> until a real callsign is set (3 or more characters with a digit and a letter; <code>N0CALL</code> and <code>NOCALL</code> are refused). Kept through power-off.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">B</span> Set the frequency</h2>
+    <ol class="steps">
+      <li><div>On the main screen show a frequency, not a channel (hold <kbd>3</kbd>, or <kbd>F</kbd> then <kbd>3</kbd>).</div></li>
+      <li><div>Type six digits, for example 144.390 MHz: <kbd>1</kbd><kbd>4</kbd><kbd>4</kbd><kbd>3</kbd><kbd>9</kbd><kbd>0</kbd>.</div></li>
+      <li><div><strong>Check the display shows exactly that.</strong> The radio rounds to its step: a 12.5 kHz step turns 144.390 into 144.3875. If it moved, set <span class="m">19 Step</span> to 5 or 10 kHz and retype.</div></li>
+    </ol>
+    <p class="note">The radio tunes and transmits only inside <strong>144–148 MHz and 420–450 MHz</strong>. Packets go out on whatever the <em>main</em> VFO shows, so leave it on the APRS frequency. It returns to the same frequency after a power cut.</p>
+  </section>
+
+  <div class="page-break"></div>
+
+  <section>
+    <h2><span class="n">C</span> Receive only: read APRS messages</h2>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>Set to</th><th>Why</th></tr>
+      <tr><td><span class="m">01 APRS</span></td><td><span class="v">ON</span></td><td>Listens for packets.</td></tr>
+      <tr><td><span class="m">07 Intv</span></td><td><span class="v">OFF</span></td><td>No automatic beacons.</td></tr>
+      <tr><td><span class="m">02 Digi</span></td><td><span class="v">OFF</span></td><td>Does not repeat other stations.</td></tr>
+    </table></div>
+    <ul class="note" style="margin:0; padding-left:1.1rem; display:grid; gap:var(--s-1)">
+      <li>A message to <strong>your callsign and SSID</strong> opens a box, triple beep, backlight on. Any key closes it. <span class="m">22 RdMsg</span> then <kbd>MENU</kbd> shows the last one again; <kbd>▲</kbd> <kbd>▼</kbd> turn its pages. It is lost at power-off.</li>
+      <li>Other packets show for 30 s in the box as <code>CALL 12.3km</code> (needs <span class="m">10 Loc</span> set) or <code>CALL:text</code>.</li>
+      <li>Not fully silent: the radio acknowledges a numbered message addressed to it.</li>
+      <li>While APRS is on, the radio listens on the main VFO only (dual watch is switched off) and the lower half of the main screen is the APRS panel instead of VFO B.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="n">D</span> Send a message</h2>
+    <ol class="steps">
+      <li><div><span class="m">12 MsgTo</span>: who to (<code>N0CALL-7</code>). After a message arrives this already holds the sender.</div></li>
+      <li><div><span class="m">13 Msg</span>: the text (30 characters).</div></li>
+      <li><div><span class="m">14 Send</span>: <kbd>MENU</kbd>, <kbd>▲</kbd> to <span class="v">SEND</span>, <kbd>MENU</kbd>. It goes out within half a second when the channel is quiet. Sending the same text again is a retry (same line number); changing it gives a new number.</div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><span class="n">E</span> Run as a digipeater</h2>
+    <p>Do <strong>A</strong> and <strong>B</strong> first. Then set these. Fill in the club's choice in the last column.</p>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>Suggested</th><th>What it does</th><th>Club</th></tr>
+      <tr><td><span class="m">17 Sql</span></td><td><span class="v">1</span>–<span class="v">3</span></td><td>The digi waits for a quiet channel; squelch <span class="v">0</span> never counts as busy.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">16 Power</span></td><td>per site</td><td>Transmit power for continuous duty.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">01 APRS</span></td><td><span class="v">ON</span></td><td>The digi runs only while APRS is on.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">02 Digi</span></td><td><span class="v">WIDE</span></td><td><span class="v">FILL</span> repeats WIDE1-1 only. <span class="v">WIDE</span> also repeats WIDEn-N hops.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">03 DHops</span></td><td><span class="v">WIDE2-2</span></td><td>The biggest hop request repeated. Bigger ones (WIDE7-7) are ignored.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">04 DDly</span></td><td><span class="v">500ms</span></td><td>Random wait before repeating, so nearby digis do not transmit together.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">05 BcnTy</span></td><td><span class="v">DIGI</span></td><td>Beacons as a digipeater (<code>/#</code>) with no repeat-me path.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">10 Loc</span></td><td>15 digits or none</td><td>Position code from <code>aprs_pc.py loc LAT LON</code>. With none, the beacon is a status packet: it still identifies the station.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">11 Cmnt</span></td><td>text</td><td>Beacon comment.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">07 Intv</span></td><td><span class="v">10 min</span></td><td>Beacon interval (OFF, 1, 2, 5, 10, 15, 30, 60 min). First one 15 s after APRS goes on. The beacon is also your station ID: meet your licence's rule.</td><td class="blank"><span></span></td></tr>
+    </table></div>
+    <p class="note">The digi never repeats under <code>N0CALL</code>, its own call-SSID, a duplicate within 30 s, or more than 20 repeats a minute. It is deaf for about a second while it transmits.</p>
+    <p class="note"><strong>Quickest for several radios:</strong> fill in <code>site.json</code> and run <code>aprs_pc.py PORT setup set site.json</code> (see the serial quick start).</p>
+
+    <div class="cols">
+      <div class="box">
+        <h3>Check it is working</h3>
+        <p>With APRS on, the lower half of the main screen shows:</p>
+        <p><span class="screen">LH W1AW-9 2m*<br>HRD&nbsp;&nbsp;124 RPT&nbsp;&nbsp;&nbsp;37<br>DUP&nbsp;&nbsp;&nbsp;&nbsp;9 DRP&nbsp;&nbsp;&nbsp;&nbsp;0</span></p>
+        <p>The last station heard and how long ago (<code>*</code>: this digi repeated it), then the counters. The red LED lights while it transmits (for a beacon, a message or a repeat).</p>
+      </div>
+      <div class="box">
+        <h3><span class="m">06 DStat</span>: open it, <kbd>▲</kbd> <kbd>▼</kbd> pick a counter</h3>
+        <div class="tbl"><table>
+          <tr><td><code>HRD</code></td><td>packets heard (always shown)</td></tr>
+          <tr><td>last heard</td><td>the callsign</td></tr>
+          <tr><td><code>RPT</code></td><td>repeats transmitted</td></tr>
+          <tr><td><code>DUP</code></td><td>skipped, already repeated</td></tr>
+          <tr><td><code>CNL</code></td><td>left to a nearer digi (FILL)</td></tr>
+          <tr><td><code>HOP</code></td><td>refused, too many hops</td></tr>
+          <tr><td><code>DRP</code></td><td>dropped: busy channel or TX refused</td></tr>
+          <tr><td><code>avg</code> <code>max</code></td><td>decoder time per sample (µs; the limit is 104)</td></tr>
+          <tr><td><code>stk</code></td><td>least stack ever left free (bytes)</td></tr>
+        </table></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="page-break"></div>
+
+  <section>
+    <h2><span class="n">F</span> Before you leave for the site</h2>
+    <ol class="steps">
+      <li><div>Battery charged; spare pack or USB-C power if the site allows.</div></li>
+      <li><div><span class="m">08 Call</span> and <span class="m">09 SSID</span> set; main VFO on the APRS frequency, display checked.</div></li>
+      <li><div><span class="m">16 Power</span> and <span class="m">17 Sql</span> chosen; <span class="m">26 KeyLck</span> on so a bump does not change settings.</div></li>
+      <li><div>Digi settings from the table; <span class="m">01 APRS</span> <span class="v">ON</span>. Wait for the first beacon (about 15 s) and see it on another receiver or aprs.fi.</div></li>
+      <li><div>Send a packet from another radio with a WIDE1-1 path: <code>RPT</code> should rise and the red LED flash. If <code>HRD</code> rises but <code>RPT</code> does not, open DStat (<code>DRP</code>, <code>HOP</code>, <code>DUP</code>).</div></li>
+      <li><div>Power-cycle once: the radio should come back on the same frequency with APRS and Digi still on.</div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><span class="n">G</span> Flashing and recovery</h2>
+    <div class="cols">
+      <div class="box">
+        <h3>Flash (UV Studio)</h3>
+        <ol class="steps">
+          <li><div>Back up the calibration first: <em>Dump Calibration</em> in UV Studio, normal mode. Keep the file.</div></li>
+          <li><div>Put the radio in DFU mode as UV Studio's <em>Flash Firmware</em> page shows, choose <code>f4hwn.aprs.bin</code>, flash.</div></li>
+          <li><div>Stock Fusion kept in <strong>slot 1</strong> is the way back (below).</div></li>
+        </ol>
+      </div>
+      <div class="box">
+        <h3>Get the stock firmware back</h3>
+        <ol class="steps">
+          <li><div>Power off. Hold <kbd>MENU</kbd>, power on, release when the slot selector appears.</div></li>
+          <li><div><kbd>▲</kbd> <kbd>▼</kbd> pick slot 1 (Fusion), <kbd>MENU</kbd> restores it, <kbd>EXIT</kbd> leaves.</div></li>
+          <li><div>Never power off while a slot is restoring.</div></li>
+        </ol>
+      </div>
+    </div>
+    <p class="note">The service menu (calibration, <span class="m">F Lock</span>, <span class="m">Reset</span>) is still there: power on holding PTT and the upper side key. Settings made with UV Studio or CHIRP are kept; <span class="m">Reset</span> clears the radio but not the APRS settings.</p>
+  </section>
+
+  <footer>
+    From a computer: USB-C or the K-plug cable. <code>aprs_pc.py PORT status</code>, <code>setup get|set file.json</code>, <code>monitor</code>, <code>msg TO text</code>.
+    Licensed amateurs only. Firmware: UV-K5 V3 / UV-K1 APRS build, <code>KD2DCM-APRS</code> on the splash screen.
+  </footer>
+</div>

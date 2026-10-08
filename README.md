@@ -57,6 +57,8 @@ Special thanks to Jean-Cyrille F6IWW (3 times), Fabrice 14RC123, David F4BPP (2 
 
 ## Main features and improvements from F4HWN
 
+> **APRS build:** this fork adds an `APRS` preset (receive, beacon, messages, digipeater). See [APRS.md](APRS.md).
+
 ### Fusion edition
 
 Fusion is the generic reference edition for the UV-K1 and UV-K5 V3. It is intended

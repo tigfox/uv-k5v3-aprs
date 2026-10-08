@@ -282,8 +282,30 @@ void DIGI_Sent(bool on_air)
     }
 }
 
+static uint32_t gDigiTxAt[DIGI_RATE_MAX];   // when the last DIGI_RATE_MAX repeats started
+static uint8_t  gDigiTxHead;
+static bool     gDigiTxFull;
+
+bool DIGI_RateOk(uint32_t now)
+{
+    if (!gDigiTxFull)
+        return true;                                       // fewer than DIGI_RATE_MAX repeats so far
+    return now - gDigiTxAt[gDigiTxHead] >= DIGI_RATE_WINDOW;   // the oldest has left the window
+}
+
+void DIGI_RateNote(uint32_t now)
+{
+    gDigiTxAt[gDigiTxHead] = now;
+    if (++gDigiTxHead == DIGI_RATE_MAX) {
+        gDigiTxHead = 0;
+        gDigiTxFull = true;
+    }
+}
+
 void DIGI_Reset(uint8_t mode, uint8_t hops, uint8_t delay)
 {
+    gDigiTxHead = 0;
+    gDigiTxFull = false;
     memset(gDigiSeenKey, 0, sizeof(gDigiSeenKey));
     memset(gDigiSeenAt, 0, sizeof(gDigiSeenAt));
     memset(gAPRS_DigiStats, 0, sizeof(gAPRS_DigiStats));

@@ -350,6 +350,26 @@ static int test_digi(void)
     return gDigiFails != 0;
 }
 
+static int test_rate_cap(void)
+{
+    int fail = 0;
+    DIGI_Reset(DIGI_WIDE, 2, 0);
+    for (unsigned i = 0; i < DIGI_RATE_MAX; i++) {
+        if (!DIGI_RateOk(1000u + i * 10u)) { printf("rate: refused repeat %u of %u\n", i, DIGI_RATE_MAX); fail = 1; }
+        DIGI_RateNote(1000u + i * 10u);
+    }
+    if (DIGI_RateOk(1000u + DIGI_RATE_MAX * 10u)) { printf("rate: the cap did not hold\n"); fail = 1; }
+    if (DIGI_RateOk(1000u + DIGI_RATE_WINDOW - 1u)) { printf("rate: allowed before the oldest left the window\n"); fail = 1; }
+    if (!DIGI_RateOk(1000u + DIGI_RATE_WINDOW)) { printf("rate: still refused after the window\n"); fail = 1; }
+    DIGI_RateNote(1000u + DIGI_RATE_WINDOW);              // one more: the next oldest now counts
+    if (DIGI_RateOk(1000u + DIGI_RATE_WINDOW + 5u)) { printf("rate: the window did not slide\n"); fail = 1; }
+    if (!DIGI_RateOk(1010u + DIGI_RATE_WINDOW)) { printf("rate: the window did not slide forward\n"); fail = 1; }
+    DIGI_Reset(DIGI_WIDE, 2, 0);                            // switching APRS off clears it
+    if (!DIGI_RateOk(0)) { printf("rate: reset did not clear it\n"); fail = 1; }
+    printf(fail ? "RATE CAP FAILED\n" : "RATE CAP PASSED (20 repeats per 60 s, sliding window)\n");
+    return fail;
+}
+
 static int test_lastheard(void)
 {
     int fail = 0;
@@ -577,7 +597,8 @@ int main(void)
 {
     const int hfail = test_hdlc_and_parsers();
     const int dfail = test_digi();
+    const int rfail = test_rate_cap();
     const int lfail = test_lastheard();
     const int efail = test_textentry();
-    return hfail || dfail || lfail || efail;
+    return hfail || dfail || rfail || lfail || efail;
 }

@@ -450,6 +450,22 @@ the same call **and** SSID is ignored (own transmission heard back); another SSI
 station and is repeated. Two stations on the identical call-SSID are still treated as one: give each radio its
 own SSID (e.g. digi -1, handheld -7).
 
+## Stack measurement (user, 2026-10-08)
+
+`stk` read 2256 bytes (least stack ever left free) after a beacon, a message and 8 repeats: ample margin; RAM
+needs no trimming. Not yet covered: menu text editing / flash saves, serial sessions, the multiboot selector.
+
+## Step 9 and field-test readiness (2026-10-08)
+
+Done: `claude/radio-card.html` (menus 01-26, set-up, messages, digipeater table, checks, flashing and recovery),
+`APRS.md` (README link), `claude/serial-quickstart.md`, `tools/aprs/site.example.json` (tested), and
+`claude/release/f4hwn.aprs.bin` with its checksum. Also fixed for unattended use: no screen sleep (SetOff) while
+APRS runs; the red LED now lights on every APRS transmission (it did not: the transmit path bypassed the
+function that turns it on); a cap of 20 digi repeats per minute (a held-back repeat is dropped after 5 s like a
+busy-channel one). Remaining from step 10 (needs the bench): squelch/busy behaviour, two-digi collision rate vs
+DDly, TX with USB-C attached, held-arrow speed, flat-battery recovery, runtime per pack, charger noise on the
+decoder, and `stk` after menu saves and serial sessions.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

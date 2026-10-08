@@ -2185,6 +2185,9 @@ void APP_TimeSlice500ms(void)
     #ifdef ENABLE_FEAT_F4HWN_BEAM
         && !gBeamActive
     #endif
+    #ifdef ENABLE_APRS
+        && !APRS_IsOn()     // a station that listens and repeats is not put to sleep (and the red LED stays a TX light)
+    #endif
     )
     {
         if (gSleepModeCountdown_500ms > 0 && --gSleepModeCountdown_500ms == 0) {

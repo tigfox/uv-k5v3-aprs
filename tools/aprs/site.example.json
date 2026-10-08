@@ -1,0 +1,15 @@
+{
+  "call": "KD2DCM",
+  "ssid": 1,
+  "aprs_on": true,
+  "interval_min": 10,
+  "digi": "WIDE",
+  "hops": 2,
+  "delay": "500ms",
+  "beacon": "DIGI",
+  "comment": "Ridge digi",
+  "msgto": "",
+  "loc": "",
+  "tone_level": 66,
+  "tone_twist": 0
+}
