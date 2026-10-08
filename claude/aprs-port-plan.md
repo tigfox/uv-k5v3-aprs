@@ -466,6 +466,12 @@ busy-channel one). Remaining from step 10 (needs the bench): squelch/busy behavi
 DDly, TX with USB-C attached, held-arrow speed, flat-battery recovery, runtime per pack, charger noise on the
 decoder, and `stk` after menu saves and serial sessions.
 
+## Backlight wake (user, 2026-10-08)
+
+The backlight may time out. With it off, the first key press (any key but PTT) only turns it on: the UI does not
+see that press, nor its repeats or release. Upstream did this for EXIT only. APRS build only
+(`ProcessKey` in `app/app.c`). A message box is dismissed by the second press, so the first one lets you read it.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

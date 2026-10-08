@@ -2434,6 +2434,21 @@ static void TX1750_Off(void)
 static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
 #ifdef ENABLE_APRS
+    /* With the backlight off the first key only turns it on: the press is not seen by the UI, and neither
+     * is the rest of that press (repeats, release). PTT is left alone: it transmits as usual. */
+    static KEY_Code_t aprsLightWakeKey = KEY_INVALID;
+    if (aprsLightWakeKey != KEY_INVALID && Key == aprsLightWakeKey) {
+        if (!bKeyPressed)
+            aprsLightWakeKey = KEY_INVALID;
+        return;
+    }
+    if (bKeyPressed && !bKeyHeld && Key != KEY_PTT && gEeprom.BACKLIGHT_TIME > 0 && !BACKLIGHT_IsOn()) {
+        BACKLIGHT_TurnOn();
+        gBeepToPlay = BEEP_NONE;
+        aprsLightWakeKey = Key;
+        return;
+    }
+
     if (bKeyPressed && !bKeyHeld && APRS_DismissMessage()) {
         if (Key != KEY_PTT)
             return;     // the key only closed the message box (PTT passes through)
