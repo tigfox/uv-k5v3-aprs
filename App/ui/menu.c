@@ -48,6 +48,8 @@
     #include "app/aprs_menu_text.h"
     #include "app/aprs_store.h"   /* needs ENABLE_APRS (the APRS preset sets both) */
     #include "app/aprs_task.h"
+    #include "app/aprs_menu_edit.h"
+    #include "app/aprs_items.h"
     static_assert(MENU_APRS_LAST - MENU_APRS_FIRST + 1 == APRS_MI_COUNT, "APRS menu ids must match APRS_MI_*");
 #endif
 #ifdef ENABLE_FEAT_F4HWN_MULTIBOOT
@@ -1112,9 +1114,13 @@ void UI_DisplayMenu(void)
                 APRS_DStatString(String, sizeof(String));
                 break;
             }
+            if (gIsInSubMenu && APRS_MenuEditing()) {
+                APRS_MenuEditView(String, sizeof(String));
+                break;
+            }
             aprs_settings_t shown = gAprsSettings;      // what is being edited, not yet saved
-            if (gIsInSubMenu && m == MENU_APRS)
-                shown.aprs_on = (uint8_t)(gSubMenuSelection != 0);
+            if (gIsInSubMenu && APRS_ItemIsChoice((unsigned)(m - MENU_APRS_FIRST)))
+                shown = APRS_ItemSet(&gAprsSettings, (unsigned)(m - MENU_APRS_FIRST), gSubMenuSelection);
             if (m == MENU_APRS_BEACON) {
                 strcpy(String, gIsInSubMenu && gSubMenuSelection != 0 ? "SEND" : "NO");
                 break;

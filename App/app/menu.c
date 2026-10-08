@@ -58,6 +58,8 @@
 #ifdef ENABLE_APRS_MENU_ONLY
     #include "app/aprs_store.h"
     #include "app/aprs_task.h"
+    #include "app/aprs_menu_edit.h"
+    #include "app/aprs_items.h"
 #endif
 
 
@@ -265,9 +267,15 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
     switch (menu_id)
     {
 #ifdef ENABLE_APRS_MENU_ONLY
-        case MENU_APRS:
-        case MENU_APRS_BEACON:
-            *pMax = 1;
+        case MENU_APRS_FIRST ... MENU_APRS_LAST:
+            if (menu_id == MENU_APRS_BEACON) {      // an action: NO / SEND
+                *pMax = 1;
+                break;
+            }
+            if (!APRS_ItemIsChoice((unsigned)(menu_id - MENU_APRS_FIRST)))
+                return -1;
+            *pMin = APRS_ItemMin((unsigned)(menu_id - MENU_APRS_FIRST));
+            *pMax = APRS_ItemMax((unsigned)(menu_id - MENU_APRS_FIRST));
             break;
 #endif
 
@@ -578,6 +586,17 @@ void MENU_AcceptSetting(void)
         case MENU_APRS:
             if (!APRS_SetOn(gSubMenuSelection != 0))
                 gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;   // not saved
+            return;
+
+        case MENU_APRS_DIGI ... MENU_APRS_BCNTY:
+        case MENU_APRS_INTV:
+        case MENU_APRS_SSID:
+            {
+                const aprs_settings_t n = APRS_ItemSet(&gAprsSettings, (unsigned)(menu_id - MENU_APRS_FIRST),
+                                                       gSubMenuSelection);
+                if (!APRS_StoreSave(&n))
+                    gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;   // not saved
+            }
             return;
 
         case MENU_APRS_BEACON:
@@ -1044,12 +1063,9 @@ void MENU_ShowCurrentSetting(void)
     switch (menu_id)
     {
 #ifdef ENABLE_APRS_MENU_ONLY
-        case MENU_APRS:
-            gSubMenuSelection = gAprsSettings.aprs_on;
-            break;
-
-        case MENU_APRS_BEACON:
-            gSubMenuSelection = 0;      // always opens on NO
+        case MENU_APRS_FIRST ... MENU_APRS_LAST:
+            gSubMenuSelection = menu_id == MENU_APRS_BEACON ? 0       // an action: always opens on NO
+                              : APRS_ItemGet(&gAprsSettings, (unsigned)(menu_id - MENU_APRS_FIRST));
             break;
 #endif
 
@@ -2283,6 +2299,10 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 
 void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
+#ifdef ENABLE_APRS_MENU_ONLY
+    if (APRS_MenuEditKey(Key, bKeyPressed, bKeyHeld))
+        return;
+#endif
     switch (Key)
     {
         case KEY_0...KEY_9:

@@ -1,6 +1,7 @@
 /* Copyright 2026 tigfox. Licensed under the Apache License, Version 2.0.
  * No libc printf: the firmware links its own, and newlib's would need _sbrk. */
 #include "app/aprs_menu_text.h"
+#include "app/aprs_parse.h"
 
 #define LINE_CHARS 8u   /* big-font characters per menu line */
 
@@ -67,7 +68,21 @@ void APRS_MenuText(const aprs_settings_t *s, unsigned item, char *out, size_t n)
         break;
     case APRS_MI_CALL:   put_str(&k, s->call); break;
     case APRS_MI_SSID:   put_uint(&k, s->ssid); break;
-    case APRS_MI_LOC:    if (s->loc[0]) put_two_lines(&k, s->loc); else put_str(&k, "NONE"); break;
+    case APRS_MI_LOC: {
+        int32_t lat, lon;
+        char tmp[16];
+        if (!s->loc[0]) {
+            put_str(&k, "NONE");
+        } else if (APRS_LocDecode(s->loc, &lat, &lon)) {     // "40.71N" over "74.00W"
+            char *e = APRS_FmtCoord(tmp, lat, 'N', 'S'); *e = 0;
+            put_str(&k, tmp); put_char(&k, '\n');
+            e = APRS_FmtCoord(tmp, lon, 'E', 'W'); *e = 0;
+            put_str(&k, tmp);
+        } else {
+            put_two_lines(&k, s->loc);                         // set by cable with a bad checksum: show the digits
+        }
+        break;
+    }
     case APRS_MI_CMNT:   put_two_lines(&k, s->comment); break;
     case APRS_MI_MSGTO:  put_str(&k, s->msgto); break;
     case APRS_MI_BEACON: put_str(&k, "NO"); break;     /* an action: the menu shows SEND while editing */

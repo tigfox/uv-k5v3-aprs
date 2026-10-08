@@ -42,7 +42,10 @@ int main(void)
     is(&s, APRS_MI_INTV, "90s");
     is(&s, APRS_MI_SSID, "15");
     is(&s, APRS_MI_LOC, "12345678\n9012345");
-    is(&s, APRS_MI_CMNT, "A very l\nong comm");   /* 2 lines of 8, rest elided */
+    is(&s, APRS_MI_CMNT, "A very l\nong comm");
+    strcpy(s.loc, "130712810599405");
+    is(&s, APRS_MI_LOC, "40.71N\n74.00W");
+    strcpy(s.loc, "123456789012345");   /* 2 lines of 8, rest elided */
     is(&s, 99, "N/A");
     { char tiny[4]; APRS_MenuText(&s, APRS_MI_CALL, tiny, sizeof tiny); CHECK(strlen(tiny) == 3); }
     { char one[1] = {'x'}; APRS_MenuText(&s, APRS_MI_CALL, one, 1); CHECK(one[0] == 0); }

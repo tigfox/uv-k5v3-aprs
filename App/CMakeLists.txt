@@ -168,6 +168,8 @@ enable_feature(ENABLE_APRS
     app/aprs_settings.c
     app/aprs_store.c
     app/aprs_task.c
+    app/aprs_edit.c
+    app/aprs_items.c
     app/aprs_ax25.c
     app/aprs_beacon.c
     app/aprs_demod.c
@@ -185,6 +187,7 @@ enable_feature(ENABLE_US_2M_70CM_ONLY
 )
 enable_feature(ENABLE_APRS_MENU_ONLY
     app/aprs_menu_text.c
+    app/aprs_menu_edit.c
 )
 enable_feature(ENABLE_BIG_FREQ)
 enable_feature(ENABLE_SMALL_BOLD)

@@ -314,7 +314,9 @@ nothing calls them yet, so the image is unchanged.
 
 ## Step 3 status (2026-10-07)
 
-Built, **not yet run on the radio**. `app/aprs_demod.c` is a C transcription of armel's demodulator;
+**Works on the radio** (user, 2026-10-07): a beacon from another radio increased the heard count; DStat
+showed ISR avg 16 us, max 32 us (budget 104); the screen stayed responsive. Squelch/AF behaviour held up.
+Built as follows. `app/aprs_demod.c` is a C transcription of armel's demodulator;
 `make -C tools/aprs test` feeds it ADC vectors generated from his Python model
 (`tools/aprs/gen_vectors.py`, `vectors/`): all 15 cases decode exactly what the model decodes (13/13
 true frames, the bad-FCS frame rejected), plus 30 s of noise and silence with no false frame.
@@ -345,6 +347,17 @@ frames -> HDLC -> synthesized phase-continuous AFSK at the tone schedule -> the 
 beacon, digi beacon, message, ack, 150-byte frame; 16/16 level x twist grid, +-0.8 % bit clock, noise
 6/6; a corrupted frame is rejected. The menu **BEACON** item (YES) sends the station beacon, but a
 beacon needs a callsign and a Loc, which cannot be entered yet.
+
+## Menu editing (pulled forward from step 5 for the transmit test, 2026-10-07)
+
+Choice items edit with the arrows and save on MENU: APRS, Digi, DHops (1-7), DDly, BcnTy, Intv (OFF, 1, 2,
+5, 10, 15, 30, 60 min), SSID. Text fields (**Call, Loc, Cmnt, MsgTo**) have a self-contained editor
+(`app/aprs_edit.c`, hooked at the top of `MENU_ProcessKeys`): MENU opens it, the field opens empty,
+UP/DOWN walk the characters at the cursor, the digit keys type a digit, STAR moves to the next position,
+EXIT backspaces (and leaves when empty), MENU commits. Committing a blank field keeps the old value.
+Loc is the 15-digit code (code generator), shown afterwards as latitude / longitude; a wrong checksum is
+refused with a double beep. Msg, Send and RdMsg are still step 5. Digi/DHops/DDly/BcnTy/Intv are stored
+only; the digi and the auto-beacon act on them in steps 5/6.
 
 ## Open items
 

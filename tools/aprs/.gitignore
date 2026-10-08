@@ -8,3 +8,4 @@ cov
 vectors
 test_aprs_demod
 test_aprs_modem
+test_aprs_edit
