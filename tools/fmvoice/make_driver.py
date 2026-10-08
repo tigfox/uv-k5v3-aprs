@@ -8,6 +8,7 @@ The result is armel's driver (GPL, not kept in this repository) plus the repeate
 Changes, all by anchored text replacement so a new upstream driver that moved something fails loudly here instead of
 producing a wrong driver:
   - the radio is listed as "UV-K1 & UV-K5 V3 (F4HWN FM Voice)" so it does not clash with the stock driver;
+  - the 24 long bank names (16 characters each, EEPROM 0x8900) are in the memory map, so CHIRP downloads and uploads them;
   - download also reads the info table (EEPROM 0xD000-0xFFFF); upload writes it only when it looks like that table
     (never over the APRS build's settings record, which lives at the same address);
   - get_memory / set_memory carry the comment, validate_memory warns about text that will be cut;
@@ -157,7 +158,8 @@ def make(src_text, codec_text):
     t = replace_once(t, '    def set_memory(self, memory):\n        """\n        Store details about a high-level memory',
                      '    def _f4hwn_set_memory(self, memory):\n        """\n        Store details about a high-level memory', "set_memory")
     t = replace_once(t, "        msgs = super().validate_memory(mem)\n", VALIDATE, "validate_memory")
-    t = replace_once(t, 'MEM_FORMAT = """\n', 'MEM_FORMAT = """\n#seekto 0x00D000;\nstruct {\n  ul16 check;\n  char text[46];\n} repinfo[256];\n\n', "memory format")
+    t = replace_once(t, 'MEM_FORMAT = """\n', 'MEM_FORMAT = """\n#seekto 0x00D000;\nstruct {\n  ul16 check;\n  char text[46];\n} repinfo[256];\n\n'
+                     '#seekto 0x008900;\nstruct {\n  char name[16];\n} longname[24];\n\n', "memory format")
     t = replace_once(t, "    status.max = MEM_SIZE\n    status.msg = \"Downloading from radio\"",
                      "    status.max = MEM_SIZE + (FMV_END - FMV_ADDR)\n    status.msg = \"Downloading from radio\"", "download status")
     t = replace_once(t, "            raise errors.RadioError(\"Memory download incomplete\")\n\n    return memmap.MemoryMapBytes(eeprom)\n",

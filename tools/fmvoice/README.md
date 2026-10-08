@@ -61,9 +61,17 @@ kk7ds/chirp as `CHIRP_SRC`, its Python dependencies, and armel's driver as `FMV_
     python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --mmap fmvoice.img --upload-mmap
 
 Banks from the CSV: add a column named `Scanlist` (or `Bank`) to the CSV. A cell is empty (no bank), `ALL`, a list
-number 1-24, or a bank **name**. Names are upper-cased and cut to 3 characters (what the radio shows); a name
-that a list already has is reused, a new name takes the first list without a name and names it. CHIRP's own CSV
-import ignores that column, so go through `csv2img` with the image you just downloaded from the radio:
+number 1-24, or a bank **name** of up to **16 characters** (cut with a warning). Optionally add a column named `Short` with the
+bank's **short name** (up to 3 characters, upper-cased): the status bar and the channel tag only have room for that.
+Without a `Short` cell the short name is the first three letters of the name. Names are matched to a list that already has
+that long name (ignoring case, the stored case is kept), or only that short name; a new name takes the first list without a
+name. Two banks that end up with the same short name are reported: give one a `Short`.
+
+Where each name is shown: the long name on the card for a moment when the BANK key is pressed (the whole 16-character row),
+under the number in the ScList menu (two small lines) and as the scan screen title; the short name on the status bar and
+the channel-list tag. The long names are stored in the radio at EEPROM 0x8900 (24 x 16 bytes, in the free part of the
+attribute sector); the CHIRP driver here carries them, other firmwares and drivers never touch that range. CHIRP's own CSV
+import ignores both columns, so go through `csv2img` with the image you just downloaded from the radio:
 
     python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --mmap radio.img --download-mmap
     python3 chirp_cli.py csv2img repeaters.csv new.img --base radio.img   # keeps the radio's settings, sets channels + banks

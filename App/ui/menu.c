@@ -14,6 +14,9 @@
  *     limitations under the License.
  */
 
+#ifdef ENABLE_FMVOICE
+#include "app/fmv_store.h"
+#endif
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -981,6 +984,9 @@ void UI_DisplayMenu(void)
     unsigned int       i;
     char               String[64];  // bigger cuz we can now do multi-line in one string (use '\n' char)
     char               top_right_badge[16];
+#ifdef ENABLE_FMVOICE
+    char               fmv_bank_name[2][FMV_BANKNAME_MAX + 1] = {{0}, {0}};   // the long bank name, in up to two lines
+#endif
     uint8_t            top_right_badge_line = 1;
 
 #ifdef ENABLE_FEAT_F4HWN_MENU_CAT
@@ -1509,6 +1515,15 @@ void UI_DisplayMenu(void)
                 strcpy(String, "OFF");
             else {
                 const char *name = gListName[gSubMenuSelection - 1];
+#ifdef ENABLE_FMVOICE
+                char long_name[FMV_BANKNAME_MAX + 1];
+                if (m == MENU_S_LIST && FMV_StoreBankName(gSubMenuSelection, long_name)) {
+                    // the number big, the long name under it in two small lines (the item area is 78 pixels wide)
+                    sprintf(String, "%02u", gSubMenuSelection);
+                    FMV_BankNameWrap(long_name, 11, fmv_bank_name[0], fmv_bank_name[1]);
+                    break;
+                }
+#endif
                 
                 // If first character is empty/invalid, display "N/A"
                 if (IsEmptyName(name, sizeof(gListName[0])))
@@ -2012,6 +2027,14 @@ void UI_DisplayMenu(void)
     if (top_right_badge[0] != '\0') {
         UI_MENU_DrawTopRightRoundedBadge(top_right_badge, top_right_badge_line, true, menu_item_x1, menu_item_x2);
     }
+
+#ifdef ENABLE_FMVOICE
+    if (fmv_bank_name[0][0] != '\0') {
+        UI_PrintStringSmallNormal(fmv_bank_name[0], menu_item_x1, menu_item_x2, 4);
+        if (fmv_bank_name[1][0] != '\0')
+            UI_PrintStringSmallNormal(fmv_bank_name[1], menu_item_x1, menu_item_x2, 5);
+    }
+#endif
 
     if (m == MENU_S_LIST &&
         gSubMenuSelection == SCAN_LIST_MODE_MIX) {

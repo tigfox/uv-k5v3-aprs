@@ -91,6 +91,9 @@ static const AddrMapping_t ADDR_MAPPINGS[] = {
     // each config bank (bank-relative 0xB000-0xDFFF, past the config footprint that ends at 0xA178), so every
     // bank has its own and other firmwares never see it. 0xD000 + 0x3000 is the end of the 16-bit address space.
     _MK_MAPPING(0x00B000, 0xD000, 0x10000),
+    // Long bank names (app/fmv_store.h): 24 x 16 bytes at EEPROM 0x8900, in the free part of the attribute sector
+    // (the list names end at 0x00886E). This sector is rewritten whole by the flash layer, so the rest of it is kept.
+    _MK_MAPPING(0x008900, 0x8900, 0x8A80),
 #endif
 
 #ifdef ENABLE_APRS

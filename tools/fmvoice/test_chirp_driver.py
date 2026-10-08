@@ -111,7 +111,7 @@ def test_skipped_csv_channel_is_in_no_bank(drv, tmp_path):
     chirp_cli.apply_csv(r, str(src))
     assert int(r._memobj.ch_attr[0].scanlist) == 0                 # skipped: in no bank
     assert int(r._memobj.ch_attr[1].scanlist) == 1                 # not skipped: bank WX
-    assert chirp_cli.list_names(r)[0] == "WX"
+    assert chirp_cli.list_names(r)[0] == "WX" and chirp_cli.long_list_names(r)[0] == "WX"
 
 
 def test_an_empty_memory_is_never_skipped(drv):
@@ -248,8 +248,9 @@ def test_upload_never_writes_over_the_aprs_record(drv):
 
 def banks_csv(tmp_path):
     lines = open(os.path.join(HERE, "sample_repeaterbook.csv")).read().splitlines()
-    cells = ["Scanlist", "Home", "Home", "Ski", "", "ALL", "7", "Hom"]
-    out = [lines[0] + "," + cells[0]] + [f"{l},{c}" for l, c in zip(lines[1:8], cells[1:])]
+    cells = [("Scanlist", "Short"), ("Home Area", "HM"), ("home area", ""), ("Ski Trips", ""), ("", ""), ("ALL", ""), ("7", ""),
+             ("Home Area", "")]
+    out = [lines[0] + "," + ",".join(cells[0])] + [f"{l},{c[0]},{c[1]}" for l, c in zip(lines[1:8], cells[1:])]
     path = tmp_path / "banks.csv"
     path.write_text("\n".join(out) + "\n")
     return str(path)
@@ -266,8 +267,11 @@ def test_csv_bank_column_names_banks_and_assigns_channels(drv, tmp_path):
     chirp_cli.csv2img(drv, banks_csv(tmp_path), str(img))
     radio = new_radio(drv, img.read_bytes())
     assert [scanlist_of(radio, n) for n in range(1, 8)] == \
-        ["HOM [1]", "HOM [1]", "SKI [2]", "OFF", "ALL", "List [7]", "HOM [1]"]
-    assert radio._get_scanlist_name(0) == "HOM" and radio._get_scanlist_name(1) == "SKI"
+        ["HM [1]", "HM [1]", "SKI [2]", "OFF", "ALL", "List [7]", "HM [1]"]
+    assert radio._get_scanlist_name(0) == "HM" and radio._get_scanlist_name(1) == "SKI"
+    import chirp_cli
+    assert chirp_cli.long_list_names(radio)[:2] == ["Home Area", "Ski Trips"]            # the long names, case as typed
+    assert bytes(radio.get_mmap().get_byte_compatible().get_packed())[0x8900:0x8920].startswith(b"Home Area")   # at 0x8900
 
 
 def test_csv_bank_column_reuses_names_of_a_base_image(drv, tmp_path):
@@ -275,13 +279,16 @@ def test_csv_bank_column_reuses_names_of_a_base_image(drv, tmp_path):
     import chirp_cli
     base = new_radio(drv)
     base._memobj.listname[9].name = b"SKI "
+    base._memobj.longname[9].name = b"ski trips       "
     base_path = tmp_path / "base.img"
     base_path.write_bytes(base.get_mmap().get_byte_compatible().get_packed())
     img = tmp_path / "out.img"
     chirp_cli.csv2img(drv, banks_csv(tmp_path), str(img), str(base_path))
     radio = new_radio(drv, img.read_bytes())
     assert scanlist_of(radio, 3) == "SKI [10]"           # the existing SKI list, not a new one
-    assert scanlist_of(radio, 1) == "HOM [1]"            # Home took the first free list
+    assert scanlist_of(radio, 1) == "HM [1]"             # Home Area took the first free list
+    import chirp_cli
+    assert chirp_cli.long_list_names(radio)[9] == "ski trips"        # the base image's long name is kept as it was
 
 
 def test_csv_without_a_bank_column_leaves_banks_alone(drv, tmp_path):
@@ -308,7 +315,8 @@ def test_upload_csv_backs_up_converts_and_uploads(drv, tmp_path, monkeypatch):
     assert (tmp_path / "back.img").read_bytes()[:0x10000][0x0F40:0x0F40 + 0x100] == settings   # backup = the download
     uploaded = new_radio(drv, bytes(fake.eeprom))
     assert uploaded.get_memory(4).comment == "Mechanicsburg, Three Square Hollow"
-    assert scanlist_of(uploaded, 1) == "HOM [1]"
+    assert scanlist_of(uploaded, 1) == "HM [1]"
+    assert bytes(fake.eeprom[0x8900:0x8909]) == b"Home Area"            # the long names go to the radio too
     assert bytes(fake.eeprom[0x0F40:0x0F40 + 0x100]) == settings
 
 
@@ -337,3 +345,15 @@ def test_serial_ports_open_at_38400_with_dtr_and_rts_low(drv, monkeypatch):
     chirp_cli.hold_modem_lines_low()
     serial.Serial(port="/dev/cu.test", baudrate=38400, timeout=0.5)
     assert seen == [("/dev/cu.test", False, False)] and baud == [38400]
+
+
+def test_long_bank_names_are_cut_to_16_and_a_missing_short_name_comes_from_the_long_one(drv, tmp_path):
+    import chirp_cli
+    lines = open(os.path.join(HERE, "sample_repeaterbook.csv")).read().splitlines()
+    out = [lines[0] + ",Bank,Short"] + [f"{l},{c}" for l, c in zip(lines[1:3], ["GMRS Repeaters Of The Valley,", "Weather,"])]
+    path = tmp_path / "long.csv"
+    path.write_text("\n".join(out) + "\n")
+    r = new_radio(drv)
+    chirp_cli.apply_csv(r, str(path))
+    assert chirp_cli.long_list_names(r)[:2] == ["GMRS Repeaters O", "Weather"]
+    assert chirp_cli.list_names(r)[:2] == ["GMR", "WEA"]

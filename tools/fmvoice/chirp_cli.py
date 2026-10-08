@@ -44,24 +44,45 @@ def load_driver():
 
 
 BANK_HEADERS = ("scanlist", "bank", "banks", "scan list")
+SHORT_HEADERS = ("short", "shortname", "short name", "bank short")
 
 
 def read_bank_cells(csv_path):
-    """{Location: cell} from the CSV's bank column, or None if it has no such column."""
+    """({Location: bank cell}, {Location: short-name cell}) from the CSV, or None if it has no bank column."""
     with open(csv_path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
-        column = next((h for h in (reader.fieldnames or []) if h.strip().lower() in BANK_HEADERS), None)
+        fields = reader.fieldnames or []
+        column = next((h for h in fields if h.strip().lower() in BANK_HEADERS), None)
         if column is None:
             return None
-        return {int(row["Location"]): (row[column] or "") for row in reader if (row.get("Location") or "").strip().isdigit()}
+        short_column = next((h for h in fields if h.strip().lower() in SHORT_HEADERS), None)
+        rows = [row for row in reader if (row.get("Location") or "").strip().isdigit()]
+        return ({int(r["Location"]): (r[column] or "") for r in rows},
+                {int(r["Location"]): ((r[short_column] or "") if short_column else "") for r in rows})
+
+
+def _raw_name(raw):
+    if raw[:1] == b"\xff":
+        return ""
+    return raw.split(b"\xff")[0].split(b"\x00")[0].decode("ascii", "ignore").strip()
 
 
 def list_names(radio):
-    out = []
+    """The 24 short names (what the status bar shows)."""
+    return [_raw_name(bytes(int(c) for c in radio._memobj.listname[i].name)) for i in range(fmv_banks.LISTS)]
+
+
+def long_list_names(radio):
+    """The 24 long names (up to 16 characters; what the card, the ScList menu and the scan screen show)."""
+    return [_raw_name(bytes(int(c) for c in radio._memobj.longname[i].name)) for i in range(fmv_banks.LISTS)]
+
+
+def write_list_names(radio, old_short, old_long, new_short, new_long):
     for i in range(fmv_banks.LISTS):
-        raw = bytes(int(c) for c in radio._memobj.listname[i].name)
-        out.append(raw.split(b"\xff")[0].decode("ascii", "ignore").strip() if raw[:1] != b"\xff" else "")
-    return out
+        if new_short[i] != old_short[i]:
+            radio._memobj.listname[i].name = (new_short[i].encode("ascii") + b"    ")[:4]
+        if new_long[i] != old_long[i]:
+            radio._memobj.longname[i].name = (new_long[i].encode("ascii") + b" " * fmv_banks.LONG_LEN)[:fmv_banks.LONG_LEN]
 
 
 def new_radio(drv, data, pipe=None):
@@ -95,16 +116,18 @@ def apply_csv(radio, csv_path):
             print(f"  channel {number} ({mem.name}): {msg}")
         radio.set_memory(mem)
     if cells is not None:
-        names, values, warnings = fmv_banks.assign_banks(list_names(radio), ["" if n in skipped else cells.get(n, "") for n in numbers])   # a skipped channel is in no bank
-        old = list_names(radio)
-        for i, name in enumerate(names):
-            if name != old[i]:
-                radio._memobj.listname[i].name = (name.encode("ascii") + b"    ")[:4]
+        bank_cells, short_cells = cells
+        old_short, old_long = list_names(radio), long_list_names(radio)
+        new_short, new_long, values, warnings = fmv_banks.assign_banks(
+            old_short, old_long, ["" if n in skipped else bank_cells.get(n, "") for n in numbers],      # a skipped channel is in no bank
+            ["" if n in skipped else short_cells.get(n, "") for n in numbers])
+        write_list_names(radio, old_short, old_long, new_short, new_long)
         for number, value in zip(numbers, values):
             radio._memobj.ch_attr[number - 1].scanlist = value
         for w in warnings:
             print("  banks: " + w)
-        print("  banks: " + ", ".join(f"{i + 1}={n}" for i, n in enumerate(names) if n))
+        print("  banks: " + ", ".join(f"{i + 1}={new_long[i] or new_short[i]}" + (f" ({new_short[i]})" if new_long[i] and new_short[i] else "")
+                                       for i in range(fmv_banks.LISTS) if new_long[i] or new_short[i]))
     return len(numbers)
 
 

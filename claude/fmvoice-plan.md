@@ -155,10 +155,18 @@ APRS build are reused. APRS code is not compiled in.
   Plain `chirpc` at 9600 gets `Header short read`. Details in `tools/fmvoice/README.md` ("Connecting").
   `upload-csv` was run live (download, build, upload, read back). Test setup: pyserial in a venv in `build/venv`,
   CHIRP cloned beside the repo (`../chirp`), armel's driver as `build/FMVoice/Drivers/f4hwn.chirp.v6.1.0.py`.
-- Still to do from this field test: longer bank names (the firmware stores 4 bytes per name and shows 3; showing all 4
-  would give GMRS / MURS in full, a longer table needs a new EEPROM mapping and driver change - user to choose);
-  re-run the plain `chirp_cli.py -s ... --download-mmap` path on the radio; find out why the bank data was lost;
-  an ALL scan and the ScList menu need a field check after the upload.
+- Long bank names (2026-10-08, host tested and firmware builds, **not yet on the radio**): 16-character names in a new
+  table (EEPROM 0x8900, 24 x 16 bytes, flash 0x008900 in the attribute sector; `FMV_StoreBankName`), next to the 3-character
+  short names. Card flash shows the long name alone; the ScList menu shows the number big and the name wrapped on two
+  small lines (the item area is 78 pixels wide); the scan screen title is the long name; the status bar and the channel tag
+  keep the short name. CSV: `Scanlist`/`Bank` column = long name, new `Short` column = short name (else the first three
+  letters); a clash of two short names is reported. Tests: C host tests (42 checks for names) and 41 Python tests; the
+  FMVoice preset builds (flash 91.3 KiB, RAM 11.0 KiB). To try it: flash `build/FMVoice/f4hwn.fmvoice.bin`, then upload a CSV
+  with long names (`claude/release/f4hwn.fmvoice.bin` is still the last field-tested image).
+- Field check after the upload (user, 2026-10-08): scanning works well; the earlier missing bank data is put down to a
+  flashing mistake.
+- Still to do: flash and field-check the long bank names (menu wrap, card flash, scan title); re-run the plain
+  `chirp_cli.py -s ... --download-mmap` path on the radio (unit test only so far); the 4th byte of the short name is unused.
 - Step 6 done: `claude/fmvoice-card.html` (radio card) and `tools/fmvoice/README.md`.
 - Still open: bench list (tone search on a real repeater, scanning inside a bank, weak-signal tone detection, scan speed,
   CHIRP round trip with the FM Voice driver in the GUI); a permanent bank tag on the main screen (offered, not built);

@@ -46,9 +46,10 @@ void FMV_CardFlashText(const char *text, uint8_t steps)
 
 void FMV_CardFlashBank(uint8_t list)
 {
-    char label[12];
+    char label[FMV_BANKLABEL_MAX], long_name[FMV_BANKNAME_MAX + 1];
     const char *name = (list >= 1 && list <= MR_CHANNELS_LIST) ? gListName[list - 1] : "";
-    FMV_BankLabel(list, name, SCAN_LIST_MODE_ALL, SCAN_LIST_MODE_MIX, label);
+    FMV_StoreBankName(list, long_name);
+    FMV_BankLabelLong(list, long_name, name, SCAN_LIST_MODE_ALL, SCAN_LIST_MODE_MIX, label);
     FMV_CardFlashText(label, FLASH_STEPS);
 }      /* the last card drawn needs a step every 500 ms */
 

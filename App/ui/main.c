@@ -14,6 +14,9 @@
  *     limitations under the License.
  */
 
+#ifdef ENABLE_FMVOICE
+#include "app/fmv_store.h"
+#endif
 #include <string.h>
 #include <stdlib.h>  // abs()
 
@@ -325,6 +328,13 @@ static void UI_MAIN_DrawScanListName(void)
     strcpy(text, "SCAN LIST ");
     char *p = text + 10;                     // sizeof("SCAN LIST ") - 1
 
+#ifdef ENABLE_FMVOICE
+    char long_name[FMV_BANKNAME_MAX + 1];
+    if (scan_list != SCAN_LIST_MODE_MIX && scan_list != SCAN_LIST_MODE_ALL && FMV_StoreBankName(scan_list, long_name)) {
+        UI_MAIN_DrawCenterBoldLine(long_name, 0);      // the long name alone: "SCAN LIST " plus 16 characters would not fit
+        return;
+    }
+#endif
     if (scan_list == SCAN_LIST_MODE_MIX) {
         *p++ = 'M'; *p++ = 'I'; *p++ = 'X';
     } else if (scan_list == SCAN_LIST_MODE_ALL) {

@@ -19,6 +19,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "app/fmv_bank.h"
 #include "app/fmv_info.h"
 
 /* The channel info table in the external flash (through the EEPROM layer). */
@@ -29,5 +30,14 @@ bool FMV_StoreLoad(uint16_t channel, uint32_t rx_freq, char *out);
 /* Write (or, for an empty text, clear) the record. Returns false for a channel with no slot. *cut is set if the
  * text did not fit (cut may be NULL). Writing flash is slow: not for use in a loop. */
 bool FMV_StoreSave(uint16_t channel, uint32_t rx_freq, const char *text, bool *cut);
+
+
+/* The long bank names: 24 lists x FMV_BANKNAME_MAX bytes at this EEPROM address (flash 0x008900 of the config bank: past the
+ * list names that end at 0x00886E, inside the sector of the channel attributes, which the flash layer rewrites whole). */
+#define FMV_BANKNAME_ADDR  0x8900u
+#define FMV_BANKNAME_LISTS 24u
+
+/* The long name of scan list 1..24 into out (FMV_BANKNAME_MAX + 1 bytes); false and "" if the list has none. */
+bool FMV_StoreBankName(uint8_t list, char *out);
 
 #endif

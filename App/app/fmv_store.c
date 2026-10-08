@@ -41,3 +41,13 @@ bool FMV_StoreSave(uint16_t channel, uint32_t rx_freq, const char *text, bool *c
         EEPROM_WriteBuffer(addr, rec, sizeof rec);
     return true;
 }
+
+bool FMV_StoreBankName(uint8_t list, char *out)
+{
+    out[0] = 0;
+    if (list < 1 || list > FMV_BANKNAME_LISTS)
+        return false;
+    uint8_t raw[FMV_BANKNAME_MAX];
+    EEPROM_ReadBuffer((uint16_t)(FMV_BANKNAME_ADDR + (list - 1u) * FMV_BANKNAME_MAX), raw, sizeof raw);
+    return FMV_BankNameClean(raw, out);
+}

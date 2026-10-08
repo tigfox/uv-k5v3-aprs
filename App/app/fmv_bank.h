@@ -37,6 +37,24 @@ uint16_t FMV_BankTarget(uint16_t last, uint16_t total, fmv_pred_t ok, void *ctx)
  * MIX = 26); name4 is the list's 4-character name from the radio (may be blank or unprintable). out needs 12 bytes. */
 void FMV_BankLabel(uint8_t list, const char name4[4], uint8_t all_value, uint8_t mix_value, char *out);
 
+/* Long bank names: 16 bytes per list in the radio (FMV_BANKNAME_ADDR, see fmv_store.h), padded with NUL, 0xFF or spaces. */
+#define FMV_BANKNAME_MAX    16u
+#define FMV_BANKLABEL_MAX   20u          /* room for "BANK " + a short name, or a 16-character long name, and the NUL */
+
+/* The text of a stored long name into out (FMV_BANKNAME_MAX + 1 bytes). false, and "", if there is none: never written
+ * (all 0xFF), only spaces, or any byte outside printable ASCII before the padding. Trailing spaces are dropped. */
+bool FMV_BankNameClean(const uint8_t raw[FMV_BANKNAME_MAX], char *out);
+
+/* What the card shows when the bank changes: "BANK ALL" / "BANK MIX", else the long name alone (it fills the row), else
+ * the short name as FMV_BankLabel does, else the number. long_name is what FMV_BankNameClean returned ("" if none). */
+void FMV_BankLabelLong(uint8_t list, const char *long_name, const char name4[4], uint8_t all_value, uint8_t mix_value,
+                       char *out);
+
+/* Splits a long name into two display lines of at most `width` characters (width <= FMV_BANKNAME_MAX; each out needs
+ * FMV_BANKNAME_MAX + 1 bytes): after the last space that leaves the first line within the width, else after `width`
+ * characters. A name that fits is all in line1, line2 is "". Text past two lines is dropped. */
+void FMV_BankNameWrap(const char *name, unsigned width, char *line1, char *line2);
+
 #define FMV_BANK_LAST_NONE 0xFFFFu
 
 #endif
