@@ -2430,6 +2430,13 @@ static void TX1750_Off(void)
 
 static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
+#ifdef ENABLE_APRS
+    if (bKeyPressed && !bKeyHeld && APRS_DismissMessage()) {
+        if (Key != KEY_PTT)
+            return;     // the key only closed the message box (PTT passes through)
+    }
+#endif
+
 #ifdef ENABLE_FEAT_F4HWN_SLEEP
     if (gSleepWakeKey != KEY_INVALID) {
         if (Key == gSleepWakeKey && !bKeyPressed)

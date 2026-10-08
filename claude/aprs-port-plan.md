@@ -407,6 +407,18 @@ last heard, RPT, DUP, CNL, HOP, DRP, interrupt mean and maximum. Host test of a 
 WIDE1-1 beacon -> modulate -> demodulate -> digi queues -> repeat modulated -> second receiver decodes
 `W1ABC-7*` in the path. Not yet: the `DIGI:` log lines (step 8) and the last-heard repeat marker (step 7).
 
+## Step 7 status (2026-10-07)
+
+Built, **not yet run on the radio**. With APRS on, the main screen keeps the two-row layout and the second
+VFO's half shows the APRS panel (ta1js layout): `LH W1AW-9 12m*` (who was last heard, how long ago, `*` if we
+repeated it) over `HRD`/`RPT` and `DUP`/`DRP` counters (heard, repeated, duplicate, dropped). The packet box
+is a framed overlay over rows 3-6 with up to three lines of 16 characters: the last decoded packet for 30 s
+(`W1ABC-7 12.3km`, or `:payload`; just the callsign when we have no location), and a message to us stays until
+a key closes it (the key is used up; PTT passes through) or a newer message arrives; ordinary traffic does not
+replace it. A message to us also lights the backlight. The panel and box show only while APRS is on; the
+RSSI bar and the VFO A rows are untouched. Layout only: `isMainOnly()` returns false while APRS is on, listening
+stays main-only (`app/aprs_task.c`). Unchanged presets are byte-identical.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

@@ -17,7 +17,10 @@
 #include "app/aprs_task.h"
 #include "app/aprs_ax25.h"
 #include "app/aprs_digi.h"
+#include "app/aprs_lastheard.h"
+#include "driver/backlight.h"
 #include "app/aprs_menu_text.h"
+#include "app/aprs_rxinfo.h"
 #include "app/aprs_station.h"
 #include "app/aprs_store.h"
 #include "audio.h"
@@ -34,6 +37,18 @@
 static aprs_station_t gStation;
 static aprs_dstat_t   gStat;
 static uint32_t       gTicks;
+
+/* last heard */
+static uint8_t  gLastSrc[7];
+static uint32_t gLastAt, gLastMin;
+static bool     gHaveLast, gLastRpt;
+
+/* packet box */
+#define BOX_SLOTS 60u                 /* 30 s in 500 ms slots */
+static char     gBox[APRS_RXTEXT_MAX + 1];
+static uint8_t  gBoxSlots;
+static bool     gBoxSticky;
+static void box_clear(void);
 
 /* The radio listens on the main VFO only while APRS is on: a dual watch alternates to VFO B and
  * misses packets. The settings are changed the way the RxMode menu does it. */
@@ -102,6 +117,7 @@ bool APRS_SetOn(bool on)
     } else {
         APRS_RxStop();
         APRS_StationClearPending(&gStation);       // nothing queued may go out later
+        box_clear();
         DIGI_Reset(gAprsSettings.digi_mode, gAprsSettings.digi_hops, gAprsSettings.digi_delay);   // nor a repeat
     }
     APRS_TaskSettingsChanged();
@@ -125,15 +141,78 @@ unsigned    APRS_TaskLastMsgPages(void) { return APRS_StationMsgPages(&gStation)
 void APRS_TaskSetMsgTo(const char *to)  { APRS_StationSetMsgTo(&gStation, to); }
 void APRS_TaskSetMsgText(const char *t) { APRS_StationSetMsgText(&gStation, t); }
 
-/* One decoded frame: count it, remember who, tell the station, and beep (twice for a message to us). */
+bool APRS_LastHeard(char *out)
+{
+    if (!gHaveLast || !APRS_RxRunning())
+        return false;                 // with APRS off nothing would refresh the age
+    APRS_FmtLastHeard(out, gLastSrc, gTicks - gLastAt, gLastRpt);
+    return true;
+}
+
+void APRS_PanelCount(char *out, unsigned which)
+{
+    static const char     LABEL[4][4] = { "HRD", "RPT", "DUP", "DRP" };
+    uint16_t v = 0;
+    switch (which & 3u) {
+    case 0:  v = (uint16_t)gStat.heard; break;
+    case 1:  v = gAPRS_DigiStats[DIGI_ST_REPEATED]; break;
+    case 2:  v = gAPRS_DigiStats[DIGI_ST_DUP]; break;
+    default: v = gAPRS_DigiStats[DIGI_ST_DROPPED]; break;
+    }
+    APRS_FmtCount(out, LABEL[which & 3u], v);
+}
+
+const char *APRS_BoxText(void)
+{
+    return gBox;
+}
+
+static void box_clear(void)
+{
+    gBox[0] = 0;
+    gBoxSlots = 0;
+    gBoxSticky = false;
+}
+
+bool APRS_DismissMessage(void)
+{
+    if (!gBoxSticky)
+        return false;
+    box_clear();
+    gUpdateDisplay = true;
+    return true;
+}
+
+/* Show a decoded packet in the box. A message to us stays until a key; it is replaced only by a newer
+ * message, never by ordinary traffic. */
+static void box_show(const aprs_rx_info_t *info)
+{
+    if (gBoxSticky && !info->to_me)
+        return;
+    strncpy(gBox, info->text, sizeof gBox - 1);
+    gBox[sizeof gBox - 1] = 0;
+    gBoxSlots = BOX_SLOTS;
+    gBoxSticky = info->to_me;
+}
+
+/* One decoded frame: count it, remember who, show it, tell the station, and beep (three times for a message to us). */
 static void on_frame(const aprs_rx_frame_t *f)
 {
     aprs_rx_info_t info;
     gStat.heard++;
     if (f->len >= 17u)
         AX25_FormatAddress(&f->data[7], gStat.last);
-    if (APRS_StationOnFrame(&gStation, &gAprsSettings, f->data, f->len, &info))
+    if (APRS_StationOnFrame(&gStation, &gAprsSettings, f->data, f->len, &info)) {
+        memcpy(gLastSrc, &f->data[7], sizeof gLastSrc);
+        gLastAt = gTicks;
+        gLastMin = 0;
+        gLastRpt = false;
+        gHaveLast = true;
+        box_show(&info);
+        if (info.to_me)
+            BACKLIGHT_TurnOn();       // a message to us: make sure it can be seen
         AUDIO_PlayBeep(info.to_me ? BEEP_880HZ_60MS_TRIPLE_BEEP : BEEP_1KHZ_60MS_OPTIONAL);
+    }
     /* never repeat under a placeholder callsign, nor when APRS is off */
     if (APRS_RxRunning() && APRS_CallIsSet(&gAprsSettings))
         DIGI_Consider(f->data, f->len, gTicks, gAprsSettings.call, gAprsSettings.ssid);
@@ -151,7 +230,10 @@ static void digi_poll(void)
     uint8_t *frame = DIGI_Due(gTicks, busy, &n);
     if (frame == NULL)
         return;
-    DIGI_Sent(APRS_TxSend(frame, n) == APRS_TX_OK);          // refused (band, battery, scan): counted as dropped
+    const bool sent = APRS_TxSend(frame, n) == APRS_TX_OK;
+    DIGI_Sent(sent);                                         // refused (band, battery, scan): counted as dropped
+    if (sent && gHaveLast && memcmp(&frame[7], gLastSrc, 6) == 0 && ((frame[13] ^ gLastSrc[6]) & 0x1Eu) == 0)
+        gLastRpt = true;                                     // the station on the last-heard line was repeated by us
     gUpdateDisplay = true;
 }
 
@@ -192,6 +274,14 @@ void APRS_Task10ms(void)
     digi_poll();
     if (gTicks % TICKS_PER_SLOT == 0) {
         transmit_slot();
+        if (gBoxSlots > 0 && --gBoxSlots == 0) {            // the box times out (a message too, after 30 s)
+            box_clear();
+            gUpdateDisplay = true;
+        }
+        if (gHaveLast && (gTicks - gLastAt) / 6000u != gLastMin) {   // the age reached a new minute
+            gLastMin = (gTicks - gLastAt) / 6000u;
+            gUpdateDisplay = true;
+        }
 #ifdef ENABLE_APRS_MENU_ONLY
         // keep the DStat counters live while that menu item is open
         if (gScreenToDisplay == DISPLAY_MENU && UI_MENU_GetCurrentMenuId() == MENU_APRS_DSTAT)

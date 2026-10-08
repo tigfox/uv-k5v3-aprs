@@ -134,3 +134,17 @@ void APRS_MenuMsgPage(const char *msg, unsigned page, char *out, size_t n)
         put_two_lines(&k, msg + page * 16u);
     *k.p = '\0';
 }
+
+unsigned APRS_BoxLines(const char *s, char lines[APRS_BOX_ROWS][APRS_BOX_COLS + 1])
+{
+    size_t len = 0;
+    while (s[len] && len < APRS_BOX_ROWS * APRS_BOX_COLS) len++;
+    unsigned rows = 0;
+    for (size_t i = 0; i < len; i += APRS_BOX_COLS, rows++) {
+        size_t n = len - i < APRS_BOX_COLS ? len - i : APRS_BOX_COLS;
+        for (size_t k = 0; k < n; k++)
+            lines[rows][k] = s[i + k];
+        lines[rows][n] = 0;
+    }
+    return rows;
+}

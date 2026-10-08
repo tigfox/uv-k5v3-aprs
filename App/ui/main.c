@@ -45,6 +45,9 @@
 #include "ui/helper.h"
 #include "ui/inputbox.h"
 #include "ui/main.h"
+#ifdef ENABLE_APRS
+    #include "app/aprs_task.h"
+#endif
 #include "ui/ui.h"
 #include "audio.h"
 #include "menu.h"
@@ -66,8 +69,34 @@ center_line_t center_line = CENTER_LINE_NONE;
 
     static bool isMainOnly()
     {
+#ifdef ENABLE_APRS
+        // Layout only: with APRS on keep the two-row screen, so the APRS panel has the second VFO's half.
+        // Listening is main-only anyway (app/aprs_task.c).
+        if (APRS_IsOn())
+            return false;
+#endif
         return (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF) && (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
     }
+
+#ifdef ENABLE_APRS
+    // The APRS panel, in the three rows from `line` that the second VFO would use:
+    //   LH W1AW-9 12m*
+    //   HRD 1234 RPT  567
+    //   DUP   12 DRP    0
+    // Every piece is at most 18 characters / two 8-character counters, so no text runs past x = 127
+    // into the next row (the small font does not clip).
+    static void UI_DisplayAPRSPanel(unsigned int line)
+    {
+        char s[22];
+        if (!APRS_LastHeard(s))
+            strcpy(s, "LH --");
+        UI_PrintStringSmallNormal(s, 2, 0, line);
+        for (uint8_t i = 0; i < 4; i++) {
+            APRS_PanelCount(s, i);
+            UI_PrintStringSmallNormal(s, (i & 1u) ? 66 : 2, 0, line + 1u + (i >> 1));
+        }
+    }
+#endif
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN_SCAN_PROGRESS
@@ -1549,6 +1578,14 @@ void UI_DisplayMain(void)
             continue;
         }
     }
+#endif
+
+#ifdef ENABLE_APRS
+        if (APRS_IsOn() && vfo_num != gEeprom.TX_VFO)
+        {   // the second VFO's half shows the APRS panel instead
+            UI_DisplayAPRSPanel(line);
+            continue;
+        }
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN

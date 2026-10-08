@@ -50,6 +50,16 @@ int main(void)
     { char tiny[4]; APRS_MenuText(&s, APRS_MI_CALL, tiny, sizeof tiny); CHECK(strlen(tiny) == 3); }
     { char one[1] = {'x'}; APRS_MenuText(&s, APRS_MI_CALL, one, 1); CHECK(one[0] == 0); }
     {
+        char l[APRS_BOX_ROWS][APRS_BOX_COLS + 1];
+        CHECK(APRS_BoxLines("", l) == 0);
+        CHECK(APRS_BoxLines("short", l) == 1 && strcmp(l[0], "short") == 0);
+        CHECK(APRS_BoxLines("0123456789ABCDEF", l) == 1 && strlen(l[0]) == 16);               /* exactly one row */
+        CHECK(APRS_BoxLines("0123456789ABCDEFG", l) == 2 && strcmp(l[1], "G") == 0);
+        CHECK(APRS_BoxLines("N0CALL-3>meet at the ridge at noon", l) == 3 && strcmp(l[2], "on") == 0);
+        const char *longtxt = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEFXXXXXXXX";
+        CHECK(APRS_BoxLines(longtxt, l) == 3 && strlen(l[2]) == 16 && strchr(l[2], 'X') == NULL);   /* cut at 48 */
+    }
+    {
         char b[24];
         APRS_MenuTextLines("N0CALL-3", b, sizeof b); CHECK(strcmp(b, "N0CALL-3") == 0);
         APRS_MenuTextLines("K1ABC-12 EXTRA", b, sizeof b); CHECK(strcmp(b, "K1ABC-12\n EXTRA") == 0);

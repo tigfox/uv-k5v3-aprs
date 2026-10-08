@@ -38,6 +38,12 @@
 #include "ui/menu.h"
 #include "ui/scanner.h"
 #include "ui/ui.h"
+#ifdef ENABLE_APRS
+    #include "app/aprs_menu_text.h"
+    #include "driver/st7565.h"
+    #include "ui/helper.h"
+    #include "app/aprs_task.h"
+#endif
 #include "../misc.h"
 
 GUI_DisplayType_t gScreenToDisplay;
@@ -74,11 +80,42 @@ void (*const UI_DisplayFunctions[])(void) = {
 
 static_assert(ARRAY_SIZE(UI_DisplayFunctions) == DISPLAY_N_ELEM);
 
+#ifdef ENABLE_APRS
+// The packet box: a framed overlay over the lower half of the main screen (rows 3..6), covering the
+// APRS panel, with the decoded packet in up to three lines of 16 characters. Drawn after the screen, so
+// a long packet can never garble the VFO rows or the status line.
+static void UI_DrawAPRSBox(const char *text)
+{
+    for (unsigned int r = 3; r <= 6; r++) {
+        memset(gFrameBuffer[r], 0, LCD_WIDTH);
+        gFrameBuffer[r][2]   = 0xFF;   // left frame
+        gFrameBuffer[r][3]   = 0xFF;
+        gFrameBuffer[r][124] = 0xFF;   // right frame
+        gFrameBuffer[r][125] = 0xFF;
+    }
+    for (unsigned int x = 2; x < 126; x++) {
+        gFrameBuffer[3][x] |= 0x01;    // top edge
+        gFrameBuffer[6][x] |= 0x80;    // bottom edge
+    }
+    char lines[APRS_BOX_ROWS][APRS_BOX_COLS + 1];
+    const unsigned int n = APRS_BoxLines(text, lines);
+    const unsigned int start = 4 + (APRS_BOX_ROWS - (n ? n : 1)) / 2;   // centred in rows 4..6
+    for (unsigned int r = 0; r < n; r++)
+        UI_PrintStringSmallNormal(lines[r], 8, 0, start + r);
+}
+#endif
+
 void GUI_DisplayScreen(void)
 {
     if (gScreenToDisplay != DISPLAY_INVALID) {
         UI_DisplayFunctions[gScreenToDisplay]();
     }
+#ifdef ENABLE_APRS
+    if (gScreenToDisplay == DISPLAY_MAIN && APRS_BoxText()[0]) {
+        UI_DrawAPRSBox(APRS_BoxText());
+        ST7565_BlitFullScreen();
+    }
+#endif
 }
 
 void GUI_SelectNextDisplay(GUI_DisplayType_t Display)

@@ -17,6 +17,12 @@ enum {
     APRS_MI_COUNT
 };
 
+/* The packet box: s wrapped into at most 3 lines of 16 characters. Returns the number of lines
+ * (0 for an empty string); text beyond 48 characters is cut. */
+#define APRS_BOX_COLS 16u
+#define APRS_BOX_ROWS 3u
+unsigned APRS_BoxLines(const char *s, char lines[APRS_BOX_ROWS][APRS_BOX_COLS + 1]);
+
 /* Two lines of 8 characters from s, for a text field shown outside the editor. */
 void APRS_MenuTextLines(const char *s, char *out, size_t n);
 /* Page `page` (16 characters, two lines of 8) of a received message, for RdMsg. */

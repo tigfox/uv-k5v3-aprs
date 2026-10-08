@@ -29,6 +29,13 @@ bool APRS_SetOn(bool on);                 /* menu: switch APRS on/off, save, sta
 bool APRS_IsOn(void);                     /* the receiver is running (battery save and sleep stay off) */
 void APRS_TaskSettingsChanged(void);      /* after any APRS setting was saved: re-arm the beacon timer */
 /* The DStat text for a view 0..APRS_DSTAT_VIEWS-1; APRS_TaskDStatAutoView() rotates every 2 s. */
+/* The main screen: "LH W1AW-9 12m*" (19 bytes), false until a packet is heard or while APRS is off. */
+bool APRS_LastHeard(char *out);
+/* Panel counter 0 HRD, 1 RPT, 2 DUP, 3 DRP as exactly 8 characters (+ NUL: 9 bytes). */
+void APRS_PanelCount(char *out, unsigned which);
+/* The packet box: the last decoded packet (30 s) or a message to us (until a key). "" when none. */
+const char *APRS_BoxText(void);
+bool APRS_DismissMessage(void);           /* a key closes a message box; true if it did (the key is used up) */
 void APRS_DStatString(char *out, size_t n, unsigned view);
 unsigned APRS_TaskDStatAutoView(void);
 
