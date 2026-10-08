@@ -83,9 +83,9 @@ td.blank span { display: block; height: 1.1rem; border-bottom: 1px solid var(--f
 footer { border-top: 1px solid var(--rule); padding-top: var(--s-2); color: var(--muted); font-size: 0.75rem; }
 
 @media print {
-  @page { size: auto; margin: 11mm 12mm; }
-  body { padding: 0; font-size: 9.2pt; }
-  .card { max-width: none; gap: 9pt; }
+  @page { size: auto; margin: 9mm 11mm; }
+  body { padding: 0; font-size: 8.6pt; line-height: 1.35; }
+  .card { max-width: none; gap: 7pt; }
   .page-break { display: block; break-before: page; height: 0; }
   section { gap: 5pt; }
 }
@@ -101,7 +101,7 @@ footer { border-top: 1px solid var(--rule); padding-top: var(--s-2); color: var(
         <p><span class="screen">162.550</span> the frequency, big, at the top. The tone mark and tone value sit just under it.</p>
         <p><span class="screen">KD2ABC</span> the channel name (the callsign), big, under the frequency.</p>
         <p><span class="screen">Mechanicsburg</span> the city, then the landmark: the channel's place text, big, scrolling if it is long.</p>
-        <p class="note">The place text hides while a signal is received (the signal bar takes its row); the name stays. A channel with no place text shows only the name. The name shows only if the channel display mode (menu) is <strong>Frequency</strong>; the other modes print it themselves.</p>
+        <p class="note">The place text hides while a signal is received (the signal bar takes its row); the name stays. A channel with no place text shows only the name. The name shows only in channel display mode <strong>Frequency</strong>.</p>
       </div>
       <div class="box">
         <h3>Banks (scan lists)</h3>
@@ -150,8 +150,6 @@ footer { border-top: 1px solid var(--rule); padding-top: var(--s-2); color: var(
     <p class="note">What you may use, and with what equipment, is your responsibility. Business-band and other services are not in the list.</p>
   </section>
 
-  <div class="page-break"></div>
-
   <section>
     <h2>Loading channels (computer)</h2>
     <ol class="steps">
@@ -160,7 +158,7 @@ footer { border-top: 1px solid var(--rule); padding-top: var(--s-2); color: var(
       <li><div><code>python3 tools/fmvoice/chirp_cli.py upload-csv FILE.csv --port /dev/cu.usbserial-XXXX</code></div></li>
       <li><div>It downloads the radio and keeps it as <code>fmvoice-backup-&lt;time&gt;.img</code>, puts the CSV on top (channels by Location; ones the CSV does not mention stay), asks for <span class="v">yes</span>, uploads. Restart the radio.</div></li>
     </ol>
-    <p class="note">In the CHIRP app instead: Help &rarr; Developer Mode &rarr; File &rarr; Load Module (the FM Voice driver), choose <em>Quansheng UV-K1 &amp; UV-K5 V3 (F4HWN FM Voice)</em>. The stock driver would drop the place text. Restore a backup with <code>--upload-mmap</code> (see tools/fmvoice/README.md).</p>
+    <p class="note">CHIRP app instead: Help &rarr; Developer Mode, File &rarr; Load Module (FM Voice driver), radio <em>UV-K1 &amp; UV-K5 V3 (F4HWN FM Voice)</em>. Restore a backup with <code>--upload-mmap</code> (tools/fmvoice/README.md).</p>
   </section>
 
   <section>
@@ -171,11 +169,9 @@ footer { border-top: 1px solid var(--rule); padding-top: var(--s-2); color: var(
   <section>
     <h2>Good to know</h2>
     <ul>
-      <li>Place text is kept for channels 1-256 only.</li>
-      <li>A change made to a channel by anything but the FM Voice driver (the stock driver, another firmware) hides its place text until it is uploaded again from the CSV.</li>
-      <li>A settings reset erases the channels and their place text. Keep the backup image.</li>
-      <li>No dual watch and no second VFO in this build.</li>
-      <li>This image keeps its own configuration in its multiboot slot; the APRS and Fusion slots are separate.</li>
+      <li>Place text: channels 1-256 only. A channel changed by the stock driver or another firmware loses its text until re-uploaded.</li>
+      <li>A settings reset erases channels and place text: keep the backup image.</li>
+      <li>No dual watch, no second VFO. Own multiboot slot and configuration.</li>
     </ul>
   </section>
 
