@@ -3,6 +3,7 @@
 
     CHIRP_SRC=~/src/chirp-src FMV_UPSTREAM_DRIVER=~/Downloads/f4hwn.chirp.v6.1.0.py \
         python3 chirp_cli.py csv2img repeaters.csv fmvoice.img      # CSV -> radio image, no radio needed
+    python3 chirp_cli.py upload-csv repeaters.csv --port /dev/cu.usbserial-X   # backup, convert, upload
     python3 chirp_cli.py <any chirpc arguments>                      # e.g. -s /dev/cu.usbserial-X -r "F4HWN FM Voice" --download-mmap a.img
 
 csv2img [--base downloaded.img] takes the memories of the CSV by Location with their Comment as the place text and
@@ -62,18 +63,22 @@ def list_names(radio):
     return out
 
 
-def csv2img(drv, csv_path, img_path, base_path=None):
+def new_radio(drv, data, pipe=None):
     from chirp import memmap
-    from chirp.drivers import generic_csv
-    radio = drv.UVK5RadioF4HWNFMVoice(None)
-    if base_path:
-        with open(base_path, "rb") as f:
-            data = f.read()
-    else:
-        data = b"\xff" * IMAGE_SIZE
-        print("  no --base image: the result has no radio settings and must not be uploaded to a radio")
+    radio = drv.UVK5RadioF4HWNFMVoice(pipe)
     radio._mmap = memmap.MemoryMapBytes(data)
     radio.process_mmap()
+    return radio
+
+
+def image_bytes(radio):
+    mm = radio.get_mmap()
+    return mm.get_byte_compatible().get_packed() if hasattr(mm, "get_byte_compatible") else bytes(mm)
+
+
+def apply_csv(radio, csv_path):
+    """Put the CSV's memories (by Location), place texts and banks into the radio object; returns the count."""
+    from chirp.drivers import generic_csv
     source = generic_csv.CSVRadio(csv_path)
     cells = read_bank_cells(csv_path)
     lo, hi = source.get_features().memory_bounds
@@ -88,22 +93,86 @@ def csv2img(drv, csv_path, img_path, base_path=None):
         radio.set_memory(mem)
     if cells is not None:
         names, values, warnings = fmv_banks.assign_banks(list_names(radio), [cells.get(n, "") for n in numbers])
+        old = list_names(radio)
         for i, name in enumerate(names):
-            if name != list_names(radio)[i]:
+            if name != old[i]:
                 radio._memobj.listname[i].name = (name.encode("ascii") + b"    ")[:4]
         for number, value in zip(numbers, values):
             radio._memobj.ch_attr[number - 1].scanlist = value
         for w in warnings:
             print("  banks: " + w)
         print("  banks: " + ", ".join(f"{i + 1}={n}" for i, n in enumerate(names) if n))
+    return len(numbers)
+
+
+def csv2img(drv, csv_path, img_path, base_path=None):
+    if base_path:
+        with open(base_path, "rb") as f:
+            data = f.read()
+    else:
+        data = b"\xff" * IMAGE_SIZE
+        print("  no --base image: the result has no radio settings and must not be uploaded to a radio")
+    radio = new_radio(drv, data)
+    count = apply_csv(radio, csv_path)
     with open(img_path, "wb") as f:
-        f.write(radio.get_mmap().get_byte_compatible().get_packed()
-                if hasattr(radio.get_mmap(), "get_byte_compatible") else bytes(radio.get_mmap()))
-    print(f"wrote {img_path}: {len(numbers)} memories")
+        f.write(image_bytes(radio))
+    print(f"wrote {img_path}: {count} memories")
+
+
+def upload_csv(drv, args):
+    """Download the radio (kept as a backup), put the CSV on top of it, upload. --base replaces the download (dry run)."""
+    import argparse
+    import datetime
+    p = argparse.ArgumentParser(prog="chirp_cli.py upload-csv")
+    p.add_argument("csv")
+    p.add_argument("--port", help="serial port of the radio, e.g. /dev/cu.usbserial-1410")
+    p.add_argument("--backup", help="where to keep the downloaded image (default: fmvoice-backup-<time>.img)")
+    p.add_argument("--yes", action="store_true", help="do not ask before uploading")
+    p.add_argument("--dry-run", action="store_true", help="build the new image but do not upload; with --base, no radio is needed")
+    p.add_argument("--base", help="start from this image instead of downloading (for --dry-run)")
+    o = p.parse_args(args)
+    if not o.base and not o.port:
+        p.error("give --port, or --base with --dry-run")
+    if o.base and not o.dry_run:
+        p.error("--base is only for --dry-run; an upload always starts from a fresh download")
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup = o.backup or f"fmvoice-backup-{stamp}.img"
+    new_path = f"fmvoice-upload-{stamp}.img"
+    pipe = None
+    if o.base:
+        with open(o.base, "rb") as f:
+            data = f.read()
+    else:
+        import serial
+        pipe = serial.Serial(port=o.port, baudrate=drv.UVK5RadioF4HWNFMVoice.BAUD_RATE, timeout=0.5)
+        radio = drv.UVK5RadioF4HWNFMVoice(pipe)
+        print(f"downloading from {o.port} ...")
+        radio.sync_in()
+        data = image_bytes(radio)
+        with open(backup, "wb") as f:
+            f.write(data)
+        print(f"backup of the radio: {backup}")
+    radio = new_radio(drv, data, pipe)
+    count = apply_csv(radio, o.csv)
+    with open(new_path, "wb") as f:
+        f.write(image_bytes(radio))
+    print(f"{count} memories from {o.csv}; the image to upload is kept as {new_path}")
+    if o.dry_run:
+        print("dry run: nothing uploaded")
+        return 0
+    if not o.yes and input("Upload to the radio now? It replaces the channels and the settings in the image. Type yes: ").strip() != "yes":
+        print("not uploaded")
+        return 1
+    print("uploading ... (do not touch the radio)")
+    radio.sync_out()
+    print("Upload successful. Restart the radio.")
+    return 0
 
 
 def main(argv):
     drv = load_driver()
+    if len(argv) > 2 and argv[1] == "upload-csv":
+        return upload_csv(drv, argv[2:])
     if len(argv) in (4, 6) and argv[1] == "csv2img":
         base = argv[5] if len(argv) == 6 and argv[4] == "--base" else None
         if len(argv) == 6 and base is None:

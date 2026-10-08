@@ -39,6 +39,17 @@ radio's own C decoder, and runs the download and upload against a fake radio. It
 
 Without them those tests are skipped.
 
+## One command: CSV to the radio
+
+    python3 tools/fmvoice/chirp_cli.py upload-csv repeaters.csv --port /dev/cu.usbserial-XXXX
+
+It downloads the radio first and keeps that as `fmvoice-backup-<time>.img` (change with `--backup`), puts the CSV on
+top of the download (channels by `Location`, place text from Comment, banks from a `Scanlist` / `Bank` column; channels
+the CSV does not mention stay as they are), keeps the result as `fmvoice-upload-<time>.img`, and asks you to type
+`yes` before uploading (`--yes` skips the question). `--dry-run --base some.img` builds the image without a radio.
+Close CHIRP first (one program can hold the serial port), and restart the radio after the upload. Restore a backup with
+`chirp_cli.py -s PORT -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --upload-mmap` and `--mmap fmvoice-backup-<time>.img`.
+
 ## CHIRP from the command line
 
 `chirp_cli.py` builds the driver on the fly and runs CHIRP's `chirpc` with it loaded (needs a clone of

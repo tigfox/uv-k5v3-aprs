@@ -256,3 +256,37 @@ def test_csv_without_a_bank_column_leaves_banks_alone(drv, tmp_path):
     chirp_cli.csv2img(drv, os.path.join(HERE, "sample_repeaterbook.csv"), str(img))
     radio = new_radio(drv, img.read_bytes())
     assert scanlist_of(radio, 1) == "OFF" and radio._get_scanlist_name(0) == ""
+
+
+def test_upload_csv_backs_up_converts_and_uploads(drv, tmp_path, monkeypatch):
+    sys.path.insert(0, HERE)
+    import chirp_cli
+    import serial
+    settings = b"\x5a" * 0x100                                   # something of the radio's own that must survive
+    eeprom = bytearray(b"\xff" * 0x10000)
+    eeprom[0x0F40:0x0F40 + len(settings)] = settings
+    fake = FakeRadio(drv, eeprom)
+    monkeypatch.setattr(serial, "Serial", lambda **kw: Pipe())
+    monkeypatch.chdir(tmp_path)
+    assert chirp_cli.upload_csv(drv, [banks_csv(tmp_path), "--port", "/dev/fake", "--yes",
+                                      "--backup", "back.img"]) == 0
+    assert (tmp_path / "back.img").read_bytes()[:0x10000][0x0F40:0x0F40 + 0x100] == settings   # backup = the download
+    uploaded = new_radio(drv, bytes(fake.eeprom))
+    assert uploaded.get_memory(4).comment == "Mechanicsburg, Three Square Hollow"
+    assert scanlist_of(uploaded, 1) == "HOM [1]"
+    assert bytes(fake.eeprom[0x0F40:0x0F40 + 0x100]) == settings
+
+
+def test_upload_csv_asks_first_and_dry_run_never_touches_the_radio(drv, tmp_path, monkeypatch):
+    sys.path.insert(0, HERE)
+    import chirp_cli
+    import serial
+    fake = FakeRadio(drv, b"\xff" * 0x10000)
+    monkeypatch.setattr(serial, "Serial", lambda **kw: Pipe())
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("builtins.input", lambda prompt: "no")
+    assert chirp_cli.upload_csv(drv, [banks_csv(tmp_path), "--port", "/dev/fake"]) == 1
+    assert fake.writes == []
+    (tmp_path / "base.img").write_bytes(b"\xff" * 0x10000)
+    assert chirp_cli.upload_csv(drv, [banks_csv(tmp_path), "--base", "base.img", "--dry-run"]) == 0
+    assert fake.writes == []
