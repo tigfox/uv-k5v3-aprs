@@ -23,6 +23,7 @@ import fmv_banks  # noqa: E402
 CHIRP_SRC = os.path.expanduser(os.environ.get("CHIRP_SRC", ""))
 UPSTREAM = os.path.expanduser(os.environ.get("FMV_UPSTREAM_DRIVER", "~/Downloads/f4hwn.chirp.v6.1.0.py"))
 IMAGE_SIZE = 0x10000
+MR_CHANNELS = 1024
 RADIO_BAUD = 38400
 os.environ.setdefault("CHIRP_TESTENV", "1")      # without a terminal CHIRP sends all output to a log file
 
@@ -98,8 +99,31 @@ def image_bytes(radio):
     return mm.get_byte_compatible().get_packed() if hasattr(mm, "get_byte_compatible") else bytes(mm)
 
 
-def apply_csv(radio, csv_path):
-    """Put the CSV's memories (by Location), place texts and banks into the radio object; returns the count."""
+def lists_in_use(radio):
+    """The scan lists (1-24) that any channel in the image is in."""
+    used = set()
+    for i in range(MR_CHANNELS):
+        if int(radio._memobj.channel[i].freq) not in (0, 0xFFFFFFFF):
+            value = int(radio._memobj.ch_attr[i].scanlist)
+            if 1 <= value <= fmv_banks.LISTS:
+                used.add(value)
+    return used
+
+
+def clear_unused_banks(radio):
+    """Blank the names of lists no channel is in; returns the names cleared, for the report."""
+    used = lists_in_use(radio)
+    short, long_ = list_names(radio), long_list_names(radio)
+    cleared = [long_[i] or short[i] for i in range(fmv_banks.LISTS) if (long_[i] or short[i]) and (i + 1) not in used]
+    keep_s = [n if (i + 1) in used else "" for i, n in enumerate(short)]
+    keep_l = [n if (i + 1) in used else "" for i, n in enumerate(long_)]
+    write_list_names(radio, short, long_, keep_s, keep_l)
+    return cleared
+
+
+def apply_csv(radio, csv_path, clear_unused=True):
+    """Put the CSV's memories (by Location), place texts and banks into the radio object; returns the count. With a bank
+    column, the names of lists that no channel is in afterwards are cleared (clear_unused=False keeps them)."""
     from chirp.drivers import generic_csv
     source = generic_csv.CSVRadio(csv_path)
     cells = read_bank_cells(csv_path)
@@ -128,10 +152,14 @@ def apply_csv(radio, csv_path):
             print("  banks: " + w)
         print("  banks: " + ", ".join(f"{i + 1}={new_long[i] or new_short[i]}" + (f" ({new_short[i]})" if new_long[i] and new_short[i] else "")
                                        for i in range(fmv_banks.LISTS) if new_long[i] or new_short[i]))
+        if clear_unused:
+            cleared = clear_unused_banks(radio)
+            if cleared:
+                print("  banks: cleared the names of lists no channel is in: " + ", ".join(cleared))
     return len(numbers)
 
 
-def csv2img(drv, csv_path, img_path, base_path=None):
+def csv2img(drv, csv_path, img_path, base_path=None, clear_unused=True):
     if base_path:
         with open(base_path, "rb") as f:
             data = f.read()
@@ -139,7 +167,7 @@ def csv2img(drv, csv_path, img_path, base_path=None):
         data = b"\xff" * IMAGE_SIZE
         print("  no --base image: the result has no radio settings and must not be uploaded to a radio")
     radio = new_radio(drv, data)
-    count = apply_csv(radio, csv_path)
+    count = apply_csv(radio, csv_path, clear_unused)
     with open(img_path, "wb") as f:
         f.write(image_bytes(radio))
     print(f"wrote {img_path}: {count} memories")
@@ -155,6 +183,7 @@ def upload_csv(drv, args):
     p.add_argument("--backup", help="where to keep the downloaded image (default: fmvoice-backup-<time>.img)")
     p.add_argument("--yes", action="store_true", help="do not ask before uploading")
     p.add_argument("--dry-run", action="store_true", help="build the new image but do not upload; with --base, no radio is needed")
+    p.add_argument("--keep-unused-banks", action="store_true", help="keep the names of lists no channel is in (they are cleared by default)")
     p.add_argument("--base", help="start from this image instead of downloading (for --dry-run)")
     o = p.parse_args(args)
     if not o.base and not o.port:
@@ -179,7 +208,7 @@ def upload_csv(drv, args):
             f.write(data)
         print(f"backup of the radio: {backup}")
     radio = new_radio(drv, data, pipe)
-    count = apply_csv(radio, o.csv)
+    count = apply_csv(radio, o.csv, not o.keep_unused_banks)
     with open(new_path, "wb") as f:
         f.write(image_bytes(radio))
     print(f"{count} memories from {o.csv}; the image to upload is kept as {new_path}")

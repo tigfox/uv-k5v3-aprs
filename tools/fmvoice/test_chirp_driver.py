@@ -357,3 +357,26 @@ def test_long_bank_names_are_cut_to_16_and_a_missing_short_name_comes_from_the_l
     chirp_cli.apply_csv(r, str(path))
     assert chirp_cli.long_list_names(r)[:2] == ["GMRS Repeaters O", "Weather"]
     assert chirp_cli.list_names(r)[:2] == ["GMR", "WEA"]
+
+
+def test_banks_no_channel_uses_any_more_are_cleared(drv, tmp_path):
+    import chirp_cli
+    base = new_radio(drv)
+    for index, (short, long_) in {9: (b"SKI ", b"Ski Trips       "), 11: (b"OLD ", b"Old List        "), 12: (b"KEP ", b"Kept            ")}.items():
+        base._memobj.listname[index].name = short
+        base._memobj.longname[index].name = long_
+    chan = base._memobj.channel[200]                 # a channel the CSV does not mention, in list 13 (Kept)
+    chan.freq = 14600000
+    base._memobj.ch_attr[200].scanlist = 13
+    base_path = tmp_path / "base.img"
+    base_path.write_bytes(base.get_mmap().get_byte_compatible().get_packed())
+    img = tmp_path / "out.img"
+    chirp_cli.csv2img(drv, banks_csv(tmp_path), str(img), str(base_path))
+    radio = new_radio(drv, img.read_bytes())
+    longs = chirp_cli.long_list_names(radio)
+    assert longs[9] == "Ski Trips"                   # the CSV uses it
+    assert longs[11] == "" and chirp_cli.list_names(radio)[11] == ""        # nothing uses "Old List": cleared
+    assert longs[12] == "Kept"                       # channel 201 still uses it
+    keep = tmp_path / "keep.img"
+    chirp_cli.csv2img(drv, banks_csv(tmp_path), str(keep), str(base_path), clear_unused=False)
+    assert chirp_cli.long_list_names(new_radio(drv, keep.read_bytes()))[11] == "Old List"

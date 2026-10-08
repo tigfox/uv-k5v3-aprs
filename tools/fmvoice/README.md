@@ -67,6 +67,10 @@ Without a `Short` cell the short name is the first three letters of the name. Na
 that long name (ignoring case, the stored case is kept), or only that short name; a new name takes the first list without a
 name. Two banks that end up with the same short name are reported: give one a `Short`.
 
+After the CSV is applied, the names of lists that **no channel is in** are cleared (a bank you dropped or renamed leaves no
+empty entry in the ScList menu). A list a channel outside the CSV still uses keeps its name. `upload-csv --keep-unused-banks`
+(or `csv2img` called with `clear_unused=False`) keeps them.
+
 Where each name is shown: the long name on the card for a moment when the BANK key is pressed (the whole 16-character row),
 under the number in the ScList menu (two small lines) and as the scan screen title; the short name on the status bar and
 the channel-list tag. The long names are stored in the radio at EEPROM 0x8900 (24 x 16 bytes, in the free part of the
