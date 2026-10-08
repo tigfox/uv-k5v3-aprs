@@ -36,7 +36,10 @@ uint16_t APRS_BuildHeader(uint8_t *frame, const aprs_settings_t *s, bool direct)
 // "!DDMM.mmN/DDDMM.mmE>comment" ('/>' car, '/#' digipeater) for lat/lon in micro-degrees.
 // Returns the frame length (FCS excluded). out must hold APRS_BUILD_MAX bytes.
 uint16_t APRS_BuildBeacon(uint8_t *out, const aprs_settings_t *s, int32_t lat_udeg, int32_t lon_udeg);
-// The same for the Loc stored in s; 0 if s has no valid Loc.
+// A status packet (">comment") for a station with no position: identifies it without one.
+#define APRS_STATUS_DEFAULT "UV-K5 APRS"
+uint16_t APRS_BuildStatusBeacon(uint8_t *out, const aprs_settings_t *s);
+// The beacon for the Loc stored in s, or the status packet if there is none.
 uint16_t APRS_BuildStationBeacon(uint8_t *out, const aprs_settings_t *s);
 
 #endif

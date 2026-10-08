@@ -1110,8 +1110,9 @@ void UI_DisplayMenu(void)
 #ifdef ENABLE_APRS_MENU_ONLY
         case MENU_APRS_FIRST ... MENU_APRS_LAST:
         {
-            if (m == MENU_APRS_DSTAT) {
-                APRS_DStatString(String, sizeof(String));
+            if (m == MENU_APRS_DSTAT) {         // open it and press the arrows to pick a counter
+                APRS_DStatString(String, sizeof(String),
+                                 gIsInSubMenu ? (unsigned)gSubMenuSelection : APRS_TaskDStatAutoView());
                 break;
             }
             if (gIsInSubMenu && APRS_MenuEditing()) {

@@ -8,6 +8,7 @@
 #include "app/aprs_ax25.h"
 #include "app/aprs_beacon.h"
 #include "app/aprs_demod.h"
+#include "app/aprs_digi.h"
 #include "app/aprs_modem.h"
 #include "app/aprs_msg.h"
 
@@ -176,8 +177,46 @@ static void test_roundtrips(void)
     CHECK(found == 0);
 }
 
+/* A whole digipeater hop on the host: a mobile's WIDE1-1 beacon is "heard" through the modulator and the
+ * demodulator, the digi core queues a repeat, the repeat is modulated and a second receiver decodes it
+ * with our callsign marked as used. */
+static void test_digi_hop(void)
+{
+    aprs_settings_t mobile = APRS_SettingsDefaults();
+    strcpy(mobile.call, "K1MOB"); mobile.ssid = 9; strcpy(mobile.comment, "driving");
+    uint8_t f[APRS_BUILD_MAX + 2], got[APRS_DEMOD_FRAME_MAX], rep[APRS_DEMOD_FRAME_MAX];
+    uint16_t gl = 0;
+    const uint16_t len = APRS_BuildBeacon(f, &mobile, 40712800, -74006000);
+    CHECK(roundtrip(f, len, 66, 0, 0, 0, 1, got, &gl) == 1);
+
+    DIGI_Reset(APRS_DIGI_WIDE, 2, 1);
+    CHECK(DIGI_Consider(got, gl, 1000, "W1ABC", 7) == DIGI_QUEUED);
+    uint16_t n = 0;
+    uint8_t *out = NULL;
+    uint32_t t = 1000;
+    while (t < 1200 && (out = DIGI_Due(t, false, &n)) == NULL) t++;
+    CHECK(out != NULL && n == len + 7);                 /* MYCALL* inserted in front of WIDE1-1 */
+    memcpy(rep, out, n);
+    DIGI_Sent(true);
+    uint16_t gl2 = 0;
+    CHECK(roundtrip(rep, n, 66, 0, 0, 0, 2, got, &gl2) == 1 && gl2 == n + 2 && memcmp(got, rep, n) == 0);
+    /* W1ABC-7* is now in the path, marked used, and WIDE1 is spent */
+    char a[10];
+    AX25_FormatAddress(&got[14], a);
+    CHECK(strcmp(a, "W1ABC-7") == 0 && (got[20] & 0x80));
+    CHECK(gAPRS_DigiStats[DIGI_ST_REPEATED] == 1);
+    /* hearing the same packet again within 30 s is a duplicate: nothing more to send */
+    uint8_t again[APRS_DEMOD_FRAME_MAX];
+    memcpy(again, f, len);
+    const uint16_t fcs = AX25_CalculateFCS(f, len);
+    again[len] = (uint8_t)(fcs & 0xFF); again[len + 1] = (uint8_t)(fcs >> 8);
+    CHECK(DIGI_Consider(again, (uint16_t)(len + 2), 1100, "W1ABC", 7) == DIGI_DUP);
+    DIGI_Reset(APRS_DIGI_OFF, 2, 0);
+}
+
 int main(void)
 {
+    test_digi_hop();
     test_tone_regs();
     test_line_level();
     test_roundtrips();

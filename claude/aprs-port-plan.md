@@ -385,10 +385,27 @@ TX compander forced off; `APRS_CallIsSet` now needs >= 3 characters with a digit
 and N0CALL refused); queued transmissions are dropped after a minute of busy channel and when APRS is
 switched off; at least 5 s between our transmissions (an ack storm cannot hold the carrier); the beacon
 timer re-arms only when APRS or Intv changes; ack line numbers are echoed only if alphanumeric; `is_ack`
-needs the word alone; receive frame buffers cut to 256 bytes (RAM 13.4 of 16 KiB). **Open policy
-decision:** nothing restricts an automatic transmission to an APRS frequency; it goes out on whatever the
-main VFO is tuned to inside 144-148 / 420-450 MHz. Carrier sense is the squelch only (a CTCSS-gated
+needs the word alone; receive frame buffers cut to 256 bytes (RAM 13.4 of 16 KiB). **Frequency policy (user, 2026-10-07):**
+the band windows are enough; no APRS-frequency allow-list. An automatic transmission goes out on whatever
+the main VFO is tuned to inside 144-148 / 420-450 MHz. Carrier sense is the squelch only (a CTCSS-gated
 signal would not be heard). No TX LED or burst counter yet.
+
+## Step 5 bench result (user, 2026-10-07)
+
+A message addressed to another radio was sent and its ack received. The units will have no location and
+no GPS, so with no Loc the beacon is a **status packet** (`>comment`, `>UV-K5 APRS` if the comment is
+empty; direct path for BcnTy DIGI) instead of being dropped: the station still identifies itself.
+
+## Step 6 status (2026-10-07)
+
+Built, **not yet run on the radio**. The digi core (ported in step 2) is wired in: every decoded frame goes
+to `DIGI_Consider` (only with APRS on and a real callsign); a 10 ms poll hands the due repeat to
+`APRS_TxSend` unless the receiver reports a packet in progress or the squelch (above 0) is open; a refused
+transmission counts as dropped. Settings (Digi OFF/FILL/WIDE, DHops, DDly) apply immediately; APRS off
+clears the repeat queue. DStat now has eight views you can step through with the arrows once it is open:
+last heard, RPT, DUP, CNL, HOP, DRP, interrupt mean and maximum. Host test of a whole hop: a mobile's
+WIDE1-1 beacon -> modulate -> demodulate -> digi queues -> repeat modulated -> second receiver decodes
+`W1ABC-7*` in the path. Not yet: the `DIGI:` log lines (step 8) and the last-heard repeat marker (step 7).
 
 ## Open items
 

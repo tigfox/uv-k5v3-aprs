@@ -35,7 +35,7 @@ vectors: gen_vectors.py
 test_aprs_demod: test_aprs_demod.c ../../App/app/aprs_demod.c ../../App/app/aprs_ax25.c
 	$(CC) $(CFLAGS) -o $@ $^
 
-test_aprs_modem: test_aprs_modem.c ../../App/app/aprs_modem.c ../../App/app/aprs_demod.c ../../App/app/aprs_ax25.c ../../App/app/aprs_beacon.c ../../App/app/aprs_msg.c ../../App/app/aprs_parse.c ../../App/app/aprs_settings.c
+test_aprs_modem: test_aprs_modem.c ../../App/app/aprs_digi.c ../../App/app/aprs_modem.c ../../App/app/aprs_demod.c ../../App/app/aprs_ax25.c ../../App/app/aprs_beacon.c ../../App/app/aprs_msg.c ../../App/app/aprs_parse.c ../../App/app/aprs_settings.c
 	$(CC) $(CFLAGS) -o $@ $^ -lm
 
 test_aprs_edit: test_aprs_edit.c ../../App/app/aprs_edit.c ../../App/app/aprs_msg.c ../../App/app/aprs_beacon.c ../../App/app/aprs_ax25.c ../../App/app/aprs_items.c ../../App/app/aprs_menu_text.c ../../App/app/aprs_text.c ../../App/app/aprs_parse.c ../../App/app/aprs_settings.c

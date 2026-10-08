@@ -120,7 +120,7 @@ static void test_beacon_timer(void)
     CHECK(a == APRS_ACT_BEACON && ticks + 1 == APRS_BEACON_FIRST_TICKS);
     CHECK(APRS_StationTick(&st) == APRS_ACT_BEACON);          /* stays pending until sent */
     uint8_t f[APRS_BUILD_MAX + 4];
-    const uint16_t n = APRS_StationBuild(&st, &s, APRS_ACT_BEACON, f);
+    uint16_t n = APRS_StationBuild(&st, &s, APRS_ACT_BEACON, f);
     CHECK(n > 0);
     CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1:!4042.76N/07400.36W>Ridge digi");
     APRS_StationSent(&st, &s, APRS_ACT_BEACON);
@@ -137,11 +137,14 @@ static void test_beacon_timer(void)
     APRS_StationRearm(&st, &s);
     CHECK(st.beacon_countdown == 0);                           /* APRS off: no timer */
 
-    /* no Loc: nothing to build; dropping re-arms the timer so the next interval tries again */
+    /* no Loc: the beacon is a status packet, so the station still identifies itself */
     s = me(); s.loc[0] = 0;
     APRS_StationInit(&st, &s);
     for (ticks = 0; ticks < 30; ticks++) APRS_StationTick(&st);
-    CHECK(st.beacon_pending && APRS_StationBuild(&st, &s, APRS_ACT_BEACON, f) == 0);
+    CHECK(st.beacon_pending);
+    n = APRS_StationBuild(&st, &s, APRS_ACT_BEACON, f);
+    CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1:>Ridge digi");
+    /* a request that cannot be built is dropped and the timer re-armed for the next interval */
     APRS_StationDrop(&st, &s, APRS_ACT_BEACON);
     CHECK(!st.beacon_pending && st.beacon_countdown == 1200 && st.sent_beacons == 0);
 }

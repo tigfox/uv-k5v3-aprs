@@ -100,9 +100,14 @@ void APRS_DStatText(const aprs_dstat_t *d, unsigned phase, char *out, size_t n)
         put_str(&k, "OFF");
     } else {
         put_str(&k, "HRD "); put_uint(&k, d->heard); put_char(&k, '\n');
-        switch (phase % 3u) {
+        switch (phase % APRS_DSTAT_VIEWS) {
         case 0:  put_str(&k, d->last[0] ? d->last : "--"); break;
-        case 1:  put_str(&k, "avg "); put_uint(&k, d->isr_avg_us); put_str(&k, "us"); break;
+        case 1:  put_str(&k, "RPT "); put_uint(&k, d->repeated); break;
+        case 2:  put_str(&k, "DUP "); put_uint(&k, d->dup); break;
+        case 3:  put_str(&k, "CNL "); put_uint(&k, d->cancelled); break;
+        case 4:  put_str(&k, "HOP "); put_uint(&k, d->toomany); break;
+        case 5:  put_str(&k, "DRP "); put_uint(&k, d->digi_dropped + d->dropped); break;
+        case 6:  put_str(&k, "avg "); put_uint(&k, d->isr_avg_us); put_str(&k, "us"); break;
         default: put_str(&k, "max "); put_uint(&k, d->isr_max_us); put_str(&k, "us"); break;
         }
     }

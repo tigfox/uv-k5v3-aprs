@@ -84,10 +84,20 @@ uint16_t APRS_BuildBeacon(uint8_t *out, const aprs_settings_t *s, int32_t lat_ud
     return idx;
 }
 
+uint16_t APRS_BuildStatusBeacon(uint8_t *out, const aprs_settings_t *s)
+{
+    uint16_t idx = APRS_BuildHeader(out, s, s->beacon_type != 0);
+    out[idx++] = '>';
+    const char *text = s->comment[0] ? s->comment : APRS_STATUS_DEFAULT;
+    for (uint8_t i = 0; i < APRS_COMMENT_MAX && text[i]; i++)
+        out[idx++] = (uint8_t)text[i];
+    return idx;
+}
+
 uint16_t APRS_BuildStationBeacon(uint8_t *out, const aprs_settings_t *s)
 {
     int32_t lat, lon;
     if (!APRS_LocDecode(s->loc, &lat, &lon))
-        return 0;
+        return APRS_BuildStatusBeacon(out, s);     // no position (a fixed digi with no GPS): identify with a status
     return APRS_BuildBeacon(out, s, lat, lon);
 }

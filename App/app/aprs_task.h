@@ -28,7 +28,9 @@ void APRS_Task10ms(void);                 /* every 10 ms: decoded frames; every 
 bool APRS_SetOn(bool on);                 /* menu: switch APRS on/off, save, start/stop the receiver */
 bool APRS_IsOn(void);                     /* the receiver is running (battery save and sleep stay off) */
 void APRS_TaskSettingsChanged(void);      /* after any APRS setting was saved: re-arm the beacon timer */
-void APRS_DStatString(char *out, size_t n);
+/* The DStat text for a view 0..APRS_DSTAT_VIEWS-1; APRS_TaskDStatAutoView() rotates every 2 s. */
+void APRS_DStatString(char *out, size_t n, unsigned view);
+unsigned APRS_TaskDStatAutoView(void);
 
 /* Menu Send / BEACON: queue a transmission for the next idle moment (within about half a second). */
 bool APRS_TaskQueueSend(void);            /* false: no target or no text */

@@ -74,10 +74,19 @@ static void test_beacons(void)
     CHECK(n > 0);
     CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1:!4042.76N/07400.36W>Ridge digi");
 
-    strcpy(s.loc, "");
-    CHECK(APRS_BuildStationBeacon(f, &s) == 0);          /* no Loc: nothing to beacon */
+    strcpy(s.loc, "");                                     /* no Loc: a status packet identifies the station */
+    n = APRS_BuildStationBeacon(f, &s);
+    CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1:>Ridge digi");
+    s.beacon_type = 1;
+    n = APRS_BuildStationBeacon(f, &s);
+    CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5:>Ridge digi");   /* a digipeater sends it direct */
+    s.beacon_type = 0; s.comment[0] = 0;
+    n = APRS_BuildStationBeacon(f, &s);
+    CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1:>UV-K5 APRS");
+    strcpy(s.comment, "Ridge digi");
     strcpy(s.loc, "130712810599406");
-    CHECK(APRS_BuildStationBeacon(f, &s) == 0);          /* bad checksum */
+    n = APRS_BuildStationBeacon(f, &s);                   /* bad checksum: also falls back */
+    CHECK(strstr(tnc2(f, n), ":>Ridge digi") != NULL);
 
     s = station(); memset(s.comment, 'x', APRS_COMMENT_MAX); s.comment[APRS_COMMENT_MAX] = 0;
     n = APRS_BuildBeacon(f, &s, -33865000, 151209000);   /* S and E hemispheres */

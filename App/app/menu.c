@@ -272,6 +272,10 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
                 *pMax = 1;
                 break;
             }
+            if (menu_id == MENU_APRS_DSTAT) {       // the counter shown
+                *pMax = (int32_t)APRS_DSTAT_VIEWS - 1;
+                break;
+            }
             if (menu_id == MENU_APRS_RDMSG) {       // a page of the last message each
                 if (APRS_TaskLastMsgPages() == 0)
                     return -1;
@@ -621,6 +625,7 @@ void MENU_AcceptSetting(void)
             return;
 
         case MENU_APRS_RDMSG:
+        case MENU_APRS_DSTAT:
             return;
 #endif
 
@@ -1081,7 +1086,7 @@ void MENU_ShowCurrentSetting(void)
 #ifdef ENABLE_APRS_MENU_ONLY
         case MENU_APRS_FIRST ... MENU_APRS_LAST:
             gSubMenuSelection = (menu_id == MENU_APRS_BEACON || menu_id == MENU_APRS_SEND ||
-                                 menu_id == MENU_APRS_RDMSG) ? 0       // an action or the newest page: opens on NO / page 1
+                                 menu_id == MENU_APRS_RDMSG || menu_id == MENU_APRS_DSTAT) ? 0       // an action or the newest page: opens on NO / page 1
                               : APRS_ItemGet(&gAprsSettings, (unsigned)(menu_id - MENU_APRS_FIRST));
             break;
 #endif

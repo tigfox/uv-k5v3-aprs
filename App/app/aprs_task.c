@@ -16,6 +16,7 @@
 
 #include "app/aprs_task.h"
 #include "app/aprs_ax25.h"
+#include "app/aprs_digi.h"
 #include "app/aprs_menu_text.h"
 #include "app/aprs_station.h"
 #include "app/aprs_store.h"
@@ -49,8 +50,17 @@ static void force_main_only(void)
     gUpdateStatus = true;
 }
 
+/* The digipeater's settings live in the digi core's globals; push the stored ones in. */
+static void apply_digi_settings(void)
+{
+    gAPRS_DigiMode  = gAprsSettings.digi_mode;
+    gAPRS_DigiHops  = gAprsSettings.digi_hops;
+    gAPRS_DigiDelay = gAprsSettings.digi_delay;
+}
+
 void APRS_TaskInit(void)
 {
+    apply_digi_settings();
     APRS_StationInit(&gStation, &gAprsSettings);
     APRS_TaskSettingsChanged();                    // remember what the timer was armed for
     if (gAprsSettings.aprs_on) {
@@ -68,6 +78,7 @@ bool APRS_IsOn(void)
  * setting must not push the next beacon out, nor bring one forward. */
 void APRS_TaskSettingsChanged(void)
 {
+    apply_digi_settings();
     static bool     known;
     static uint8_t  last_on;
     static uint16_t last_interval;
@@ -91,6 +102,7 @@ bool APRS_SetOn(bool on)
     } else {
         APRS_RxStop();
         APRS_StationClearPending(&gStation);       // nothing queued may go out later
+        DIGI_Reset(gAprsSettings.digi_mode, gAprsSettings.digi_hops, gAprsSettings.digi_delay);   // nor a repeat
     }
     APRS_TaskSettingsChanged();
     return true;
@@ -122,6 +134,24 @@ static void on_frame(const aprs_rx_frame_t *f)
         AX25_FormatAddress(&f->data[7], gStat.last);
     if (APRS_StationOnFrame(&gStation, &gAprsSettings, f->data, f->len, &info))
         AUDIO_PlayBeep(info.to_me ? BEEP_880HZ_60MS_TRIPLE_BEEP : BEEP_1KHZ_60MS_OPTIONAL);
+    /* never repeat under a placeholder callsign, nor when APRS is off */
+    if (APRS_RxRunning() && APRS_CallIsSet(&gAprsSettings))
+        DIGI_Consider(f->data, f->len, gTicks, gAprsSettings.call, gAprsSettings.ssid);
+    gUpdateDisplay = true;
+}
+
+/* Every 10 ms: transmit a repeat that is due. A busy channel pushes it back (and after 5 s drops
+ * it); squelch 0 holds the squelch open for ever, so it only counts as busy above 0. */
+static void digi_poll(void)
+{
+    if (!DIGI_HasQueued() || gCurrentFunction == FUNCTION_TRANSMIT || gPttIsPressed)
+        return;
+    const bool busy = APRS_RxBusy() || (gEeprom.SQUELCH_LEVEL > 0 && FUNCTION_IsRx());
+    uint16_t n = 0;
+    uint8_t *frame = DIGI_Due(gTicks, busy, &n);
+    if (frame == NULL)
+        return;
+    DIGI_Sent(APRS_TxSend(frame, n) == APRS_TX_OK);          // refused (band, battery, scan): counted as dropped
     gUpdateDisplay = true;
 }
 
@@ -159,6 +189,7 @@ void APRS_Task10ms(void)
         on_frame(&f);
 
     gTicks++;
+    digi_poll();
     if (gTicks % TICKS_PER_SLOT == 0) {
         transmit_slot();
 #ifdef ENABLE_APRS_MENU_ONLY
@@ -169,15 +200,25 @@ void APRS_Task10ms(void)
     }
 }
 
-void APRS_DStatString(char *out, size_t n)
+unsigned APRS_TaskDStatAutoView(void)
+{
+    return gTicks / 200u;
+}
+
+void APRS_DStatString(char *out, size_t n, unsigned view)
 {
     const aprs_rx_stats_t rs = APRS_RxStats();
     gStat.running = APRS_RxRunning();
     gStat.dropped = rs.dropped;
+    gStat.repeated = gAPRS_DigiStats[DIGI_ST_REPEATED];
+    gStat.dup = gAPRS_DigiStats[DIGI_ST_DUP];
+    gStat.cancelled = gAPRS_DigiStats[DIGI_ST_CANCELLED];
+    gStat.toomany = gAPRS_DigiStats[DIGI_ST_TOOMANY];
+    gStat.digi_dropped = gAPRS_DigiStats[DIGI_ST_DROPPED];
     /* cycles to microseconds: the CPU runs at 48 MHz */
     if (rs.isr_cycles_max) {
         gStat.isr_avg_us = rs.isr_cycles_avg / 48u;
         gStat.isr_max_us = rs.isr_cycles_max / 48u;
     }
-    APRS_DStatText(&gStat, gTicks / 200u, out, n);   /* a new view every 2 s */
+    APRS_DStatText(&gStat, view, out, n);
 }

@@ -59,12 +59,15 @@ int main(void)
         APRS_MenuMsgPage(m, 2, b, sizeof b); CHECK(b[0] == 0);
     }
     {
-        aprs_dstat_t d = { 12, 0, 21, 48, "W1ABC-7", true };
+        aprs_dstat_t d = { .heard = 12, .repeated = 5, .dup = 3, .cancelled = 2, .toomany = 1, .digi_dropped = 4,
+                           .dropped = 1, .isr_avg_us = 21, .isr_max_us = 48, .last = "W1ABC-7", .running = true };
         char b[24];
-        APRS_DStatText(&d, 0, b, sizeof b); CHECK(strcmp(b, "HRD 12\nW1ABC-7") == 0);
-        APRS_DStatText(&d, 1, b, sizeof b); CHECK(strcmp(b, "HRD 12\navg 21us") == 0);
-        APRS_DStatText(&d, 2, b, sizeof b); CHECK(strcmp(b, "HRD 12\nmax 48us") == 0);
-        APRS_DStatText(&d, 3, b, sizeof b); CHECK(strcmp(b, "HRD 12\nW1ABC-7") == 0);
+        const char *want[APRS_DSTAT_VIEWS] = { "HRD 12\nW1ABC-7", "HRD 12\nRPT 5", "HRD 12\nDUP 3", "HRD 12\nCNL 2",
+                                               "HRD 12\nHOP 1", "HRD 12\nDRP 5", "HRD 12\navg 21us", "HRD 12\nmax 48us" };
+        for (unsigned i = 0; i < APRS_DSTAT_VIEWS; i++) {
+            APRS_DStatText(&d, i, b, sizeof b); CHECK(strcmp(b, want[i]) == 0);
+            APRS_DStatText(&d, i + APRS_DSTAT_VIEWS, b, sizeof b); CHECK(strcmp(b, want[i]) == 0);   /* it wraps */
+        }
         d.last[0] = 0; APRS_DStatText(&d, 0, b, sizeof b); CHECK(strcmp(b, "HRD 12\n--") == 0);
         d.running = false; APRS_DStatText(&d, 0, b, sizeof b); CHECK(strcmp(b, "OFF") == 0);
         d.running = true; APRS_DStatText(&d, 1, b, 5); CHECK(strlen(b) == 4);
