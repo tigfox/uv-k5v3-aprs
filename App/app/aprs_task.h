@@ -19,12 +19,15 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include "app/aprs_cmd.h"
+#include "app/aprs_settings.h"
 #include "driver/aprs_tx.h"
 
 /* Glue between the settings, the receiver and transmitter drivers, and the station state machine
  * (app/aprs_station.c). */
 void APRS_TaskInit(void);                 /* once, after the settings are loaded: start the receiver if APRS is on */
 void APRS_Task10ms(void);                 /* every 10 ms: decoded frames; every 500 ms: what to transmit */
+bool APRS_TaskApplySettings(const aprs_settings_t *s);   /* save a whole settings record and make it take effect */
 bool APRS_SetOn(bool on);                 /* menu: switch APRS on/off, save, start/stop the receiver */
 bool APRS_IsOn(void);                     /* the receiver is running (battery save and sleep stay off) */
 void APRS_TaskSettingsChanged(void);      /* after any APRS setting was saved: re-arm the beacon timer */
@@ -36,6 +39,7 @@ void APRS_PanelCount(char *out, unsigned which);
 /* The packet box: the last decoded packet (30 s) or a message to us (until a key). "" when none. */
 const char *APRS_BoxText(void);
 bool APRS_DismissMessage(void);           /* a key closes a message box; true if it did (the key is used up) */
+const aprs_cmd_ops_t *APRS_TaskCmdOps(void);           /* what the serial commands act on */
 void APRS_DStatString(char *out, size_t n, unsigned view);
 unsigned APRS_TaskDStatAutoView(void);
 

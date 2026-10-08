@@ -63,6 +63,11 @@
     #include "sram-overlay.h"
 #endif
 
+#ifdef ENABLE_APRS
+    #include "app/aprs_cmd.h"
+    #include "app/aprs_task.h"
+#endif
+
 #define UNUSED(x) (void)(x)
 
 #define DMA_INDEX(x, y, z) (((x) + (y)) % (z))
@@ -891,6 +896,24 @@ static uint32_t mb_port_timestamp(uint32_t Port)
 }
 #endif
 
+#ifdef ENABLE_APRS
+/* The session id the host sent in its 0x0514 handshake on this port: the APRS commands that change
+ * anything or transmit must repeat it. */
+static uint32_t aprs_port_timestamp(uint32_t Port)
+{
+#if defined(ENABLE_UART)
+    if (Port == UART_PORT_UART)
+        return UART_Timestamp;
+#endif
+#if defined(ENABLE_USB)
+    if (Port == UART_PORT_VCP)
+        return VCP_Timestamp;
+#endif
+    (void)Port;
+    return 0;
+}
+#endif
+
 void UART_HandleCommand(uint32_t Port)
 {
     UART_Command_t *pUART_Command;
@@ -934,6 +957,19 @@ void UART_HandleCommand(uint32_t Port)
         case 0x0514:
             CMD_0514(Port, pUART_Command->Buffer);
             break;
+
+#ifdef ENABLE_APRS
+        case APRS_CMD_FIRST ... APRS_CMD_LAST:
+        {
+            uint8_t  Reply[APRS_CMD_REPLY_MAX];
+            const uint16_t Len = APRS_CmdRun(APRS_TaskCmdOps(), Port, pUART_Command->Header.ID,
+                                            pUART_Command->Data, pUART_Command->Header.Size,
+                                            aprs_port_timestamp(Port), Reply);
+            if (Len != 0)
+                SendReply(Port, Reply, Len);
+            break;
+        }
+#endif
 
         case 0x051B:
             CMD_051B(Port, pUART_Command->Buffer);

@@ -108,7 +108,8 @@ void APRS_DStatText(const aprs_dstat_t *d, unsigned phase, char *out, size_t n)
         case 4:  put_str(&k, "HOP "); put_uint(&k, d->toomany); break;
         case 5:  put_str(&k, "DRP "); put_uint(&k, d->digi_dropped + d->dropped); break;
         case 6:  put_str(&k, "avg "); put_uint(&k, d->isr_avg_us); put_str(&k, "us"); break;
-        default: put_str(&k, "max "); put_uint(&k, d->isr_max_us); put_str(&k, "us"); break;
+        case 7:  put_str(&k, "max "); put_uint(&k, d->isr_max_us); put_str(&k, "us"); break;
+        default: put_str(&k, "stk "); put_uint(&k, d->stack_free_min); break;
         }
     }
     *k.p = '\0';

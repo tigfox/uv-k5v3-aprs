@@ -60,10 +60,10 @@ aprs_tx_result_t APRS_TxCheck(void)
         return APRS_TX_DENIED;
     /* not while the radio is doing something else with the VFOs and the receiver */
     if (gScanStateDir != SCAN_OFF || gCssBackgroundScan || SerialConfigInProgress())
-        return APRS_TX_DENIED;
+        return APRS_TX_BUSY;
 #ifdef ENABLE_FMRADIO_EMBEDDED
     if (gFmRadioMode)
-        return APRS_TX_DENIED;
+        return APRS_TX_BUSY;
 #endif
     return APRS_TX_OK;
 }

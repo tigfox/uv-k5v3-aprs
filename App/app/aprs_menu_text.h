@@ -33,16 +33,17 @@ typedef struct {
     uint32_t heard;          /* good frames decoded */
     uint32_t dropped;        /* decoded but lost (queue full) */
     uint32_t repeated, dup, cancelled, toomany, digi_dropped;   /* the digipeater's counters */
+    uint32_t stack_free_min; /* the least stack ever left free, bytes */
     uint32_t isr_avg_us;     /* demodulator interrupt, mean and longest, microseconds */
     uint32_t isr_max_us;
     char     last[10];       /* source of the last frame heard, "" if none */
     bool     running;
 } aprs_dstat_t;
 
-#define APRS_DSTAT_VIEWS 8u
-/* Two lines: "HRD n", then view (phase mod 8): last heard, RPT (repeated), DUP (already repeated),
+#define APRS_DSTAT_VIEWS 9u
+/* Two lines: "HRD n", then view (phase mod 9): last heard, RPT (repeated), DUP (already repeated),
  * CNL (a neighbour repeated it first), HOP (too many hops), DRP (dropped), "avg Nus", "max Nus" of
- * the receiver interrupt. "OFF" when the receiver is not running. Always NUL-terminates (when n > 0). */
+ * the receiver interrupt, "stk N" the least free stack in bytes. "OFF" when the receiver is not running. Always NUL-terminates (when n > 0). */
 void APRS_DStatText(const aprs_dstat_t *d, unsigned phase, char *out, size_t n);
 
 /* Always NUL-terminates out (when n > 0), truncating if needed. */

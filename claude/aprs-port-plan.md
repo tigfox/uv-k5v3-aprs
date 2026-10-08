@@ -426,6 +426,22 @@ The boot screen's version line (`F4HWN v6.1.0`) reads **`KD2DCM-APRS`** in the A
 version string UV Studio reads over the cable stays `EGZUMER+F4HWN v6.1.0` so its firmware detection is
 unaffected. The line below it still reads `APRS Edition`.
 
+## Step 8 status (2026-10-07)
+
+Built, **not yet run on the radio**. Commands 0x0700-0x0710 on the USB-C serial port and the K-plug UART
+(`app/aprs_cmd.c`, hardware-free, host-tested with stubbed radio operations; layouts in `app/aprs_cmd.h`):
+message, beacon, APRS on/off, raw AX.25 transmit (our own callsign as the source only), digi get/set (the
+ta1js 0x070A/0x070B layout), **setup get/set of the whole 96-byte settings record** (validated in full, all or
+nothing), and a per-port monitor switch. Everything that changes a setting or transmits must repeat the
+0x0514 session timestamp. Monitor lines `APRSRAW:` / `APRS:` / `DIGI:` (`app/aprs_serial.c`) go only to a port
+that sent 0x0710, so UV Studio / K5Viewer never see text on the shared USB port. `tools/aprs/aprs_pc.py`
+(+ `test_aprs_pc.py`, 69 tests; its record packing is pinned byte for byte to the C output) does
+`status`, `msg`, `beacon`, `on/off`, `raw`, `digi`, `setup get/set file.json`, `monitor` and `loc LAT LON`.
+`msg` is the serial-to-APRS-message path asked about earlier. A transmission refused only because the radio
+is scanning or being configured stays queued (up to a minute) instead of being dropped. DStat has a ninth
+view, `stk N`: the least stack ever left free, to size the RAM margin (APRS RAM is now 14.0 of 16 KiB).
+Not ported: the web beacon (mobile GPS), the code generator page (`aprs_pc.py loc` replaces it).
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

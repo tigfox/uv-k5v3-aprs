@@ -19,6 +19,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "app/aprs_ax25.h"
 #include "app/aprs_beacon.h"
 #include "app/aprs_msg.h"
 #include "app/aprs_rxinfo.h"
@@ -33,7 +34,7 @@
 
 #define APRS_BEACON_FIRST_TICKS 30u    /* first auto-beacon 15 s after enabling (500 ms ticks) */
 
-typedef enum { APRS_ACT_NONE, APRS_ACT_ACK, APRS_ACT_MSG, APRS_ACT_BEACON } aprs_action_t;
+typedef enum { APRS_ACT_NONE, APRS_ACT_ACK, APRS_ACT_RAW, APRS_ACT_MSG, APRS_ACT_BEACON } aprs_action_t;
 
 typedef struct {
     char     msg_text[APRS_MSG_TEXT_MAX + 1];   /* the composed message (RAM only) */
@@ -46,6 +47,8 @@ typedef struct {
     char     last_msg[APRS_RXTEXT_MAX + 1];      /* the last message addressed to us, for RdMsg */
     uint16_t beacon_countdown;                   /* 500 ms ticks to the next auto-beacon, 0 = none */
     uint32_t heard_msgs, sent_msgs, sent_beacons;
+    uint8_t  raw[APRS_RAWTX_MAX];                /* a frame queued by the host (KISS-style raw transmit) */
+    uint16_t raw_len;                            /* 0 = none */
     uint16_t pending_age;                        /* slots (500 ms) the oldest request has waited */
     uint16_t quiet;                              /* slots left before the next transmission is allowed */
 } aprs_station_t;
@@ -64,6 +67,8 @@ void APRS_StationSetMsgText(aprs_station_t *st, const char *text);
 /* Menu Send / BEACON. Send returns false (nothing queued) with no target or no text. */
 bool APRS_StationQueueMessage(aprs_station_t *st);
 void APRS_StationQueueBeacon(aprs_station_t *st);
+/* A raw frame from the host (FCS excluded, 17..APRS_RAWTX_MAX bytes). false if one is already waiting or it does not fit. */
+bool APRS_StationQueueRaw(aprs_station_t *st, const uint8_t *frame, uint16_t len);
 
 /* A decoded frame (FCS included). Updates the reply target, the ack and RdMsg state and fills *info.
  * Returns false for a frame that carries nothing or is our own. */
@@ -71,7 +76,7 @@ bool APRS_StationOnFrame(aprs_station_t *st, const aprs_settings_t *s, const uin
                          aprs_rx_info_t *info);
 /* Every 500 ms: counts the beacon timer down and says what to send next, if anything. */
 aprs_action_t APRS_StationTick(aprs_station_t *st);
-/* The frame for an action (FCS excluded, out holds APRS_BUILD_MAX + 2). 0: nothing to send
+/* The frame for an action (FCS excluded, out holds APRS_RAWTX_MAX + 2 bytes: the longest is a raw frame). 0: nothing to send
  * (e.g. a beacon with no valid Loc), in which case the request is dropped. */
 uint16_t APRS_StationBuild(aprs_station_t *st, const aprs_settings_t *s, aprs_action_t act, uint8_t *out);
 /* The frame went out. */

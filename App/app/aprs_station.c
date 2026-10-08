@@ -41,6 +41,7 @@ void APRS_StationRearm(aprs_station_t *st, const aprs_settings_t *s)
 void APRS_StationClearPending(aprs_station_t *st)
 {
     st->msg_pending = st->beacon_pending = st->ack_pending = false;
+    st->raw_len = 0;
     st->pending_age = 0;
 }
 
@@ -67,6 +68,15 @@ bool APRS_StationQueueMessage(aprs_station_t *st)
 void APRS_StationQueueBeacon(aprs_station_t *st)
 {
     st->beacon_pending = true;
+}
+
+bool APRS_StationQueueRaw(aprs_station_t *st, const uint8_t *frame, uint16_t len)
+{
+    if (st->raw_len != 0 || len < 17u || len > APRS_RAWTX_MAX)
+        return false;
+    memcpy(st->raw, frame, len);
+    st->raw_len = len;
+    return true;
 }
 
 bool APRS_StationOnFrame(aprs_station_t *st, const aprs_settings_t *s, const uint8_t *frame, uint16_t len,
@@ -105,7 +115,7 @@ aprs_action_t APRS_StationTick(aprs_station_t *st)
         st->beacon_pending = true;
         /* the interval is re-armed when the beacon goes out (APRS_StationSent) */
     }
-    if (!(st->ack_pending || st->msg_pending || st->beacon_pending)) {
+    if (!(st->ack_pending || st->raw_len || st->msg_pending || st->beacon_pending)) {
         st->pending_age = 0;
         return APRS_ACT_NONE;
     }
@@ -116,6 +126,7 @@ aprs_action_t APRS_StationTick(aprs_station_t *st)
     if (st->quiet > 0)
         return APRS_ACT_NONE;                               // the minimum gap between transmissions
     if (st->ack_pending)    return APRS_ACT_ACK;
+    if (st->raw_len)        return APRS_ACT_RAW;
     if (st->msg_pending)    return APRS_ACT_MSG;
     return APRS_ACT_BEACON;
 }
@@ -125,6 +136,9 @@ uint16_t APRS_StationBuild(aprs_station_t *st, const aprs_settings_t *s, aprs_ac
     switch (act) {
     case APRS_ACT_ACK:
         return APRS_BuildAck(out, s, st->ack_to, st->ack_seq);
+    case APRS_ACT_RAW:
+        memcpy(out, st->raw, st->raw_len);
+        return st->raw_len;
     case APRS_ACT_MSG:
         /* a changed message takes a new line number; sending the same text again is an APRS retry
          * and keeps its number, so the far end can drop the duplicate */
@@ -143,6 +157,9 @@ void APRS_StationSent(aprs_station_t *st, const aprs_settings_t *s, aprs_action_
     switch (act) {
     case APRS_ACT_ACK:
         st->ack_pending = false;
+        break;
+    case APRS_ACT_RAW:
+        st->raw_len = 0;
         break;
     case APRS_ACT_MSG:
         st->seq = APRS_MsgNextSeq(st->seq, st->dirty);
@@ -165,6 +182,7 @@ void APRS_StationDrop(aprs_station_t *st, const aprs_settings_t *s, aprs_action_
 {
     switch (act) {
     case APRS_ACT_ACK:    st->ack_pending = false; break;
+    case APRS_ACT_RAW:    st->raw_len = 0; break;
     case APRS_ACT_MSG:    st->msg_pending = false; break;
     case APRS_ACT_BEACON:                          /* e.g. no Loc yet: try again next interval */
         st->beacon_pending = false;

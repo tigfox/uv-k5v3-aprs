@@ -31,7 +31,7 @@
     #include "app/aprs_task.h"
 #endif
 #include "version.h"
-#ifdef ENABLE_FEAT_F4HWN_OVERLAY_INFO
+#if defined(ENABLE_FEAT_F4HWN_OVERLAY_INFO) || defined(ENABLE_APRS)
     #include "stack_usage.h"
 #endif
 
@@ -85,7 +85,7 @@ void _putchar(__attribute__((unused)) char c)
 
 void Main(void)
 {
-#ifdef ENABLE_FEAT_F4HWN_OVERLAY_INFO
+#if defined(ENABLE_FEAT_F4HWN_OVERLAY_INFO) || defined(ENABLE_APRS)
     STACK_WatermarkInit();
 #endif
     SYSTICK_Init();

@@ -26,6 +26,7 @@ typedef enum {
     APRS_TX_BAD_FRAME,    /* empty, too short or longer than APRS_RAWTX_MAX */
     APRS_TX_NO_CALL,      /* callsign not set (N0CALL) */
     APRS_TX_DENIED,       /* band, battery or modulation refuses transmitting */
+    APRS_TX_BUSY,         /* not now: scanning, serial configuration in progress, FM radio -- try again */
 } aprs_tx_result_t;
 
 /* Send one AX.25 frame (FCS excluded; it is appended) as Bell 202 on the TX VFO.

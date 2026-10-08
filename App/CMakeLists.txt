@@ -176,6 +176,8 @@ enable_feature(ENABLE_APRS
     app/aprs_edit.c
     app/aprs_station.c
     app/aprs_rxinfo.c
+    app/aprs_cmd.c
+    app/aprs_serial.c
     app/aprs_items.c
     app/aprs_ax25.c
     app/aprs_beacon.c
@@ -253,6 +255,10 @@ enable_feature(ENABLE_FEAT_F4HWN_OVERLAY_BEAM)
 enable_feature(ENABLE_FEAT_F4HWN_OVERLAY_INFO
     stack_usage.c
 )
+if(ENABLE_APRS AND NOT ENABLE_FEAT_F4HWN_OVERLAY_INFO)
+    # DStat shows the least stack ever left free (APRS RAM is tight)
+    target_sources(App INTERFACE stack_usage.c)
+endif()
 if(ENABLE_FEAT_F4HWN_OVERLAY_APPS AND NOT ENABLE_FEAT_F4HWN_MULTIBOOT_OVERLAY)
     message(FATAL_ERROR "ENABLE_FEAT_F4HWN_OVERLAY_APPS requires ENABLE_FEAT_F4HWN_MULTIBOOT_OVERLAY (the 4 KiB overlay workspace).")
 endif()

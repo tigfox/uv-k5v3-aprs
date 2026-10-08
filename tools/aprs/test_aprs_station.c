@@ -182,6 +182,36 @@ static void test_limits(void)
     CHECK(APRS_StationTick(&st) == APRS_ACT_NONE && !st.beacon_pending && !st.ack_pending && !st.msg_pending);
 }
 
+static void test_raw(void)
+{
+    aprs_settings_t s = me();
+    aprs_station_t st;
+    uint8_t f[APRS_RAWTX_MAX + 2], g[APRS_RAWTX_MAX + 2];
+    APRS_StationInit(&st, &s);
+    uint16_t n = APRS_BuildBeacon(f, &s, 40712800, -74006000);
+    CHECK(APRS_StationQueueRaw(&st, f, n));
+    CHECK(!APRS_StationQueueRaw(&st, f, n));                           /* one at a time */
+    CHECK(APRS_StationTick(&st) == APRS_ACT_RAW);
+    APRS_StationQueueBeacon(&st);
+    APRS_StationSetMsgTo(&st, "K1ABC"); APRS_StationSetMsgText(&st, "hi"); APRS_StationQueueMessage(&st);
+    CHECK(APRS_StationTick(&st) == APRS_ACT_RAW);                      /* raw before message and beacon */
+    CHECK(APRS_StationBuild(&st, &s, APRS_ACT_RAW, g) == n && memcmp(g, f, n) == 0);
+    APRS_StationSent(&st, &s, APRS_ACT_RAW);
+    CHECK(st.raw_len == 0);
+    st.quiet = 0;
+    CHECK(APRS_StationTick(&st) == APRS_ACT_MSG);
+    CHECK(!APRS_StationQueueRaw(&st, f, 16));                          /* too short */
+    uint8_t big[APRS_RAWTX_MAX + 1];
+    memset(big, 0, sizeof big);
+    CHECK(!APRS_StationQueueRaw(&st, big, APRS_RAWTX_MAX + 1));        /* too long */
+    CHECK(APRS_StationQueueRaw(&st, big, APRS_RAWTX_MAX));
+    APRS_StationClearPending(&st);                                      /* APRS off forgets it */
+    CHECK(st.raw_len == 0 && APRS_StationTick(&st) == APRS_ACT_NONE);
+    CHECK(APRS_StationQueueRaw(&st, f, n));
+    APRS_StationDrop(&st, &s, APRS_ACT_RAW);                            /* refused by the radio */
+    CHECK(st.raw_len == 0);
+}
+
 static void test_messages(void)
 {
     aprs_settings_t s = me(), o = other("N0CALL", 3);
@@ -260,7 +290,7 @@ static void test_messages(void)
 
 int main(void)
 {
-    test_rxinfo(); test_beacon_timer(); test_limits(); test_messages();
+    test_rxinfo(); test_beacon_timer(); test_limits(); test_raw(); test_messages();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;
 }
