@@ -15,6 +15,7 @@
 
 
 #include "app/aprs_edit.h"
+#include "app/aprs_msg.h"
 #include "app/aprs_parse.h"
 #include "app/aprs_text.h"
 #include <string.h>
@@ -31,6 +32,7 @@ void APRS_EditBegin(aprs_edit_t *e, aprs_edit_kind_t kind)
     case APRS_EDIT_CALL:  e->max = APRS_CALL_MAX; break;
     case APRS_EDIT_LOC:   e->max = APRS_LOC_MAX; break;
     case APRS_EDIT_CMNT:  e->max = APRS_COMMENT_MAX; break;
+    case APRS_EDIT_MSG:   e->max = APRS_MSG_TEXT_MAX; break;
     default:              e->max = APRS_MSGTO_MAX; break;
     }
     memset(e->buf, kind == APRS_EDIT_LOC ? '0' : blank_char(e), e->max);
@@ -85,6 +87,8 @@ bool APRS_EditBack(aprs_edit_t *e)
 aprs_edit_result_t APRS_EditCommit(const aprs_edit_t *e, aprs_settings_t *s)
 {
     aprs_settings_t n = *s;
+    if (e->kind == APRS_EDIT_MSG)
+        return APRS_EDIT_OK;                   /* not a setting: the caller takes the text with APRS_EditText */
     if (e->kind == APRS_EDIT_LOC) {
         int32_t lat, lon;
         bool entered = false;
@@ -118,6 +122,17 @@ aprs_edit_result_t APRS_EditCommit(const aprs_edit_t *e, aprs_settings_t *s)
         return APRS_EDIT_INVALID;
     *s = n;
     return APRS_EDIT_OK;
+}
+
+bool APRS_EditText(const aprs_edit_t *e, char *out)
+{
+    uint8_t len = e->max;
+    while (len > 0 && is_blank(e->buf[len - 1]))
+        len--;
+    for (uint8_t i = 0; i < len; i++)
+        out[i] = e->buf[i] == '_' ? ' ' : e->buf[i];
+    out[len] = 0;
+    return len > 0;
 }
 
 void APRS_EditView(const aprs_edit_t *e, unsigned width, char *out)

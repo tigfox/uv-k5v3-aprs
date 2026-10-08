@@ -17,6 +17,11 @@ enum {
     APRS_MI_COUNT
 };
 
+/* Two lines of 8 characters from s, for a text field shown outside the editor. */
+void APRS_MenuTextLines(const char *s, char *out, size_t n);
+/* Page `page` (16 characters, two lines of 8) of a received message, for RdMsg. */
+void APRS_MenuMsgPage(const char *msg, unsigned page, char *out, size_t n);
+
 /* What the DStat item shows: the receiver's counters, rotating through three views. */
 typedef struct {
     uint32_t heard;          /* good frames decoded */

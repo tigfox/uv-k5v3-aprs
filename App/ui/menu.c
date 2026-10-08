@@ -50,6 +50,7 @@
     #include "app/aprs_task.h"
     #include "app/aprs_menu_edit.h"
     #include "app/aprs_items.h"
+    #include "app/aprs_menu_text.h"
     static_assert(MENU_APRS_LAST - MENU_APRS_FIRST + 1 == APRS_MI_COUNT, "APRS menu ids must match APRS_MI_*");
 #endif
 #ifdef ENABLE_FEAT_F4HWN_MULTIBOOT
@@ -1121,8 +1122,24 @@ void UI_DisplayMenu(void)
             aprs_settings_t shown = gAprsSettings;      // what is being edited, not yet saved
             if (gIsInSubMenu && APRS_ItemIsChoice((unsigned)(m - MENU_APRS_FIRST)))
                 shown = APRS_ItemSet(&gAprsSettings, (unsigned)(m - MENU_APRS_FIRST), gSubMenuSelection);
-            if (m == MENU_APRS_BEACON) {
+            if (m == MENU_APRS_BEACON || m == MENU_APRS_SEND) {
                 strcpy(String, gIsInSubMenu && gSubMenuSelection != 0 ? "SEND" : "NO");
+                break;
+            }
+            if (m == MENU_APRS_MSGTO) {
+                APRS_MenuTextLines(APRS_TaskMsgTo(), String, sizeof(String));
+                break;
+            }
+            if (m == MENU_APRS_MSG) {
+                APRS_MenuTextLines(APRS_TaskMsgText(), String, sizeof(String));
+                break;
+            }
+            if (m == MENU_APRS_RDMSG) {
+                if (APRS_TaskLastMsgPages() == 0)
+                    strcpy(String, "NO\nMESSAGE");
+                else
+                    APRS_MenuMsgPage(APRS_TaskLastMsg(), gIsInSubMenu ? (unsigned)gSubMenuSelection : 0u,
+                                     String, sizeof(String));
                 break;
             }
             APRS_MenuText(&shown, (unsigned)(m - MENU_APRS_FIRST), String, sizeof(String));

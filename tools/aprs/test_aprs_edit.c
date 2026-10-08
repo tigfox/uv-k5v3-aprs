@@ -117,6 +117,21 @@ static void test_comment_and_msgto(void)
     CHECK(strlen(v) == 8 + 1 + 8 && v[9 + 4] == '^');
 }
 
+static void test_msg(void)
+{
+    aprs_edit_t e;
+    char txt[APRS_COMMENT_MAX + 1];
+    APRS_EditBegin(&e, APRS_EDIT_MSG);
+    CHECK(e.max == 30 && !APRS_EditText(&e, txt) && txt[0] == 0);
+    spell(&e, "ON AIR AT 1900Z");
+    CHECK(APRS_EditText(&e, txt) && strcmp(txt, "ON AIR AT 1900Z") == 0);
+    aprs_settings_t s = APRS_SettingsDefaults();
+    const aprs_settings_t before = s;
+    CHECK(APRS_EditCommit(&e, &s) == APRS_EDIT_OK && memcmp(&s, &before, sizeof s) == 0);   /* settings untouched */
+    for (int i = 0; i < 40; i++) APRS_EditNext(&e);
+    CHECK(e.pos == 29);
+}
+
 static void test_items(void)
 {
     aprs_settings_t s = APRS_SettingsDefaults();
@@ -153,7 +168,7 @@ static void test_items(void)
 
 int main(void)
 {
-    test_call(); test_back(); test_loc(); test_comment_and_msgto(); test_items();
+    test_call(); test_back(); test_loc(); test_comment_and_msgto(); test_msg(); test_items();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;
 }

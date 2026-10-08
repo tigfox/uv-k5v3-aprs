@@ -108,3 +108,24 @@ void APRS_DStatText(const aprs_dstat_t *d, unsigned phase, char *out, size_t n)
     }
     *k.p = '\0';
 }
+
+void APRS_MenuTextLines(const char *s, char *out, size_t n)
+{
+    if (n == 0)
+        return;
+    sink_t k = { out, n - 1 };
+    put_two_lines(&k, s);
+    *k.p = '\0';
+}
+
+void APRS_MenuMsgPage(const char *msg, unsigned page, char *out, size_t n)
+{
+    if (n == 0)
+        return;
+    size_t len = 0;
+    while (msg[len]) len++;
+    sink_t k = { out, n - 1 };
+    if (page * 16u < len)
+        put_two_lines(&k, msg + page * 16u);
+    *k.p = '\0';
+}

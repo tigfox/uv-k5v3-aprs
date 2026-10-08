@@ -21,12 +21,25 @@
 #include <stddef.h>
 #include "driver/aprs_tx.h"
 
-/* Glue between the settings, the receiver driver and the rest of the firmware. */
+/* Glue between the settings, the receiver and transmitter drivers, and the station state machine
+ * (app/aprs_station.c). */
 void APRS_TaskInit(void);                 /* once, after the settings are loaded: start the receiver if APRS is on */
-void APRS_Task10ms(void);                 /* every 10 ms: collect decoded frames */
+void APRS_Task10ms(void);                 /* every 10 ms: decoded frames; every 500 ms: what to transmit */
 bool APRS_SetOn(bool on);                 /* menu: switch APRS on/off, save, start/stop the receiver */
-aprs_tx_result_t APRS_TxBeacon(void);     /* send the station beacon now (menu BEACON) */
 bool APRS_IsOn(void);                     /* the receiver is running (battery save and sleep stay off) */
+void APRS_TaskSettingsChanged(void);      /* after any APRS setting was saved: re-arm the beacon timer */
 void APRS_DStatString(char *out, size_t n);
+
+/* Menu Send / BEACON: queue a transmission for the next idle moment (within about half a second). */
+bool APRS_TaskQueueSend(void);            /* false: no target or no text */
+void APRS_TaskQueueBeacon(void);
+
+/* The message fields, kept in RAM (the reply target follows whoever wrote last). */
+const char *APRS_TaskMsgTo(void);
+const char *APRS_TaskMsgText(void);
+const char *APRS_TaskLastMsg(void);       /* the last message addressed to us, "" if none */
+unsigned    APRS_TaskLastMsgPages(void);
+void APRS_TaskSetMsgTo(const char *to);
+void APRS_TaskSetMsgText(const char *text);
 
 #endif

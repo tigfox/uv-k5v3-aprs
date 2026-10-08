@@ -31,6 +31,7 @@ typedef enum {
     APRS_EDIT_LOC,       /* the 15-digit Loc code, checksum verified */
     APRS_EDIT_CMNT,      /* up to 43 characters */
     APRS_EDIT_MSGTO,     /* up to 9 of A-Z 0-9 - (a call with its SSID) */
+    APRS_EDIT_MSG,       /* the message text, up to 30 characters (kept in RAM, not in the settings) */
 } aprs_edit_kind_t;
 
 typedef struct {
@@ -52,6 +53,10 @@ typedef enum { APRS_EDIT_OK, APRS_EDIT_UNCHANGED, APRS_EDIT_INVALID } aprs_edit_
 /* Apply the field to *s (left alone unless OK). UNCHANGED: nothing was entered. INVALID: bad Loc
  * code or an interior blank in a call. */
 aprs_edit_result_t APRS_EditCommit(const aprs_edit_t *e, aprs_settings_t *s);
+
+/* The trimmed text of a text field ('_' blanks as spaces); false (out empty) if nothing was entered.
+ * out needs APRS_COMMENT_MAX + 1 bytes. */
+bool APRS_EditText(const aprs_edit_t *e, char *out);
 
 /* The page of `width` characters holding the cursor and a caret line under it ("ABC\n ^ "); out
  * needs 2 * width + 2 bytes. */

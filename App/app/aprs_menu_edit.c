@@ -17,6 +17,7 @@
 #include "app/aprs_menu_edit.h"
 #include "app/aprs_edit.h"
 #include "app/aprs_store.h"
+#include "app/aprs_task.h"
 #include "audio.h"
 #include "misc.h"
 #include "ui/menu.h"
@@ -33,6 +34,7 @@ static int editable_kind(int menu_id)
     case MENU_APRS_LOC:   return APRS_EDIT_LOC;
     case MENU_APRS_CMNT:  return APRS_EDIT_CMNT;
     case MENU_APRS_MSGTO: return APRS_EDIT_MSGTO;
+    case MENU_APRS_MSG:   return APRS_EDIT_MSG;
     default:              return -1;
     }
 }
@@ -57,10 +59,21 @@ static void leave(void)
 
 static void commit(void)
 {
+    if (gE.kind == APRS_EDIT_MSG) {              // the message text lives in RAM only
+        char txt[APRS_COMMENT_MAX + 1];
+        if (APRS_EditText(&gE, txt))
+            APRS_TaskSetMsgText(txt);
+        gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
+        leave();
+        return;
+    }
     aprs_settings_t s = gAprsSettings;
     switch (APRS_EditCommit(&gE, &s)) {
     case APRS_EDIT_OK:
         if (APRS_StoreSave(&s)) {
+            if (gE.kind == APRS_EDIT_MSGTO)
+                APRS_TaskSetMsgTo(s.msgto);      // also the current reply target
+            APRS_TaskSettingsChanged();
             gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
             leave();
         } else {

@@ -268,8 +268,14 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
     {
 #ifdef ENABLE_APRS_MENU_ONLY
         case MENU_APRS_FIRST ... MENU_APRS_LAST:
-            if (menu_id == MENU_APRS_BEACON) {      // an action: NO / SEND
+            if (menu_id == MENU_APRS_BEACON || menu_id == MENU_APRS_SEND) {      // an action: NO / SEND
                 *pMax = 1;
+                break;
+            }
+            if (menu_id == MENU_APRS_RDMSG) {       // a page of the last message each
+                if (APRS_TaskLastMsgPages() == 0)
+                    return -1;
+                *pMax = (int32_t)APRS_TaskLastMsgPages() - 1;
                 break;
             }
             if (!APRS_ItemIsChoice((unsigned)(menu_id - MENU_APRS_FIRST)))
@@ -594,17 +600,27 @@ void MENU_AcceptSetting(void)
             {
                 const aprs_settings_t n = APRS_ItemSet(&gAprsSettings, (unsigned)(menu_id - MENU_APRS_FIRST),
                                                        gSubMenuSelection);
-                if (!APRS_StoreSave(&n))
+                if (APRS_StoreSave(&n))
+                    APRS_TaskSettingsChanged();
+                else
                     gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;   // not saved
             }
             return;
 
         case MENU_APRS_BEACON:
             if (gSubMenuSelection != 0) {
-                // blocking, about a second: transmit the station beacon
-                if (APRS_TxBeacon() != APRS_TX_OK)
-                    gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;   // not sent
+                APRS_TaskQueueBeacon();            // sent at the next idle moment, within half a second
+                gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
             }
+            return;
+
+        case MENU_APRS_SEND:
+            if (gSubMenuSelection != 0)
+                gBeepToPlay = APRS_TaskQueueSend() ? BEEP_1KHZ_60MS_OPTIONAL
+                                                   : BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;   // no target or no text
+            return;
+
+        case MENU_APRS_RDMSG:
             return;
 #endif
 
@@ -1064,7 +1080,8 @@ void MENU_ShowCurrentSetting(void)
     {
 #ifdef ENABLE_APRS_MENU_ONLY
         case MENU_APRS_FIRST ... MENU_APRS_LAST:
-            gSubMenuSelection = menu_id == MENU_APRS_BEACON ? 0       // an action: always opens on NO
+            gSubMenuSelection = (menu_id == MENU_APRS_BEACON || menu_id == MENU_APRS_SEND ||
+                                 menu_id == MENU_APRS_RDMSG) ? 0       // an action or the newest page: opens on NO / page 1
                               : APRS_ItemGet(&gAprsSettings, (unsigned)(menu_id - MENU_APRS_FIRST));
             break;
 #endif

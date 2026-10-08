@@ -50,6 +50,15 @@ int main(void)
     { char tiny[4]; APRS_MenuText(&s, APRS_MI_CALL, tiny, sizeof tiny); CHECK(strlen(tiny) == 3); }
     { char one[1] = {'x'}; APRS_MenuText(&s, APRS_MI_CALL, one, 1); CHECK(one[0] == 0); }
     {
+        char b[24];
+        APRS_MenuTextLines("N0CALL-3", b, sizeof b); CHECK(strcmp(b, "N0CALL-3") == 0);
+        APRS_MenuTextLines("K1ABC-12 EXTRA", b, sizeof b); CHECK(strcmp(b, "K1ABC-12\n EXTRA") == 0);
+        const char *m = "N0CALL-3>meet at the ridge";
+        APRS_MenuMsgPage(m, 0, b, sizeof b); CHECK(strcmp(b, "N0CALL-3\n>meet at") == 0);
+        APRS_MenuMsgPage(m, 1, b, sizeof b); CHECK(strcmp(b, " the rid\nge") == 0);
+        APRS_MenuMsgPage(m, 2, b, sizeof b); CHECK(b[0] == 0);
+    }
+    {
         aprs_dstat_t d = { 12, 0, 21, 48, "W1ABC-7", true };
         char b[24];
         APRS_DStatText(&d, 0, b, sizeof b); CHECK(strcmp(b, "HRD 12\nW1ABC-7") == 0);

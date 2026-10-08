@@ -169,6 +169,8 @@ enable_feature(ENABLE_APRS
     app/aprs_store.c
     app/aprs_task.c
     app/aprs_edit.c
+    app/aprs_station.c
+    app/aprs_rxinfo.c
     app/aprs_items.c
     app/aprs_ax25.c
     app/aprs_beacon.c

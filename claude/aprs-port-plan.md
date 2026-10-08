@@ -359,6 +359,24 @@ Loc is the 15-digit code (code generator), shown afterwards as latitude / longit
 refused with a double beep. Msg, Send and RdMsg are still step 5. Digi/DHops/DDly/BcnTy/Intv are stored
 only; the digi and the auto-beacon act on them in steps 5/6.
 
+## Step 5 status (2026-10-07)
+
+Built, **not yet run on the radio**. Hardware-free (host-tested, `test_aprs_station.c`): `app/aprs_rxinfo.c`
+(what a received frame means: own / to me / ack, the text to show, the line number to acknowledge) and
+`app/aprs_station.c` (the state machine: auto-beacon timer, queued Send / BEACON, ack for a numbered
+message, reply target, RdMsg, line numbers with retry semantics). Priority on the air: ack, then message,
+then beacon. Firmware (`app/aprs_task.c`): every 500 ms the station is asked what to send; it goes out when
+the receiver reports no packet in progress, the squelch is closed and PTT is not down, else it is offered
+again next slot. A refused transmission (band, battery, no call) is dropped with a double beep. The first
+auto-beacon is 15 s after APRS is switched on, then every Intv. A beacon with no valid Loc is dropped and
+the timer re-armed. **Main-only listening is enforced** while APRS is on (RxMode forced to MAIN ONLY at
+start and every 500 ms; the VFO B panel is step 7). Menu: **Msg** (text, RAM only), **MsgTo** (stored; the
+RAM copy follows whoever wrote last, as in ta1js), **Send** (NO/SEND, queues), **RdMsg** (pages of 16
+characters, newest message; an incoming message beeps three times), **BEACON** now queues instead of
+blocking in the key handler. Received packets are not drawn on the main screen yet (step 7): DStat shows the
+last callsign heard. RAM is now 13.5 of 16 KiB (the TX bit buffers are static, so the stack is not deeper):
+watch the stack in step 10.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

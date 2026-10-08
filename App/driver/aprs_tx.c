@@ -76,7 +76,7 @@ aprs_tx_result_t APRS_TxSend(const uint8_t *frame, uint16_t len)
     if (chk != APRS_TX_OK)
         return chk;
 
-    uint8_t full[APRS_RAWTX_MAX + 2u], bits[HDLC_BUF_SIZE];
+    static uint8_t full[APRS_RAWTX_MAX + 2u], bits[HDLC_BUF_SIZE];   // static: keeps the stack shallow (not reentrant)
     memcpy(full, frame, len);
     const uint16_t fcs = AX25_CalculateFCS(frame, len);
     full[len] = (uint8_t)(fcs & 0xFF);
