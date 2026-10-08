@@ -133,7 +133,8 @@ void (*const action_opt_table[ACTION_OPT_LEN])(void) = {
     [ACTION_OPT_BEACON] = &ACTION_Beacon,
 #endif
 #ifdef ENABLE_FMVOICE
-    [ACTION_OPT_FOXHUNT] = &FMV_ActionBank,     /* ids 22 / 23 are free in this build: FM Voice names them BANK / TONE SEARCH */
+    [ACTION_OPT_FOXHUNT] = &FMV_ActionBank,
+    [ACTION_OPT_BEACON] = &FMV_ActionToneSearch,     /* ids 22 / 23 are free in this build: FM Voice names them BANK / TONE SEARCH */
 #endif
 };
 
@@ -358,7 +359,7 @@ inline static bool ACTION_IsBlockedInFM(uint8_t action)
 #if defined(ENABLE_FEAT_F4HWN_FOXHUNT) || defined(ENABLE_FEAT_F4HWN_OVERLAY_APPS) || defined(ENABLE_FMVOICE)
         case ACTION_OPT_FOXHUNT:
 #endif
-#if defined(ENABLE_FEAT_F4HWN_BEACON) || defined(ENABLE_FEAT_F4HWN_OVERLAY_APPS)
+#if defined(ENABLE_FEAT_F4HWN_BEACON) || defined(ENABLE_FEAT_F4HWN_OVERLAY_APPS) || defined(ENABLE_FMVOICE)
         case ACTION_OPT_BEACON:
 #endif
             return true;

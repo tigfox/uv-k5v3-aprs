@@ -31,16 +31,24 @@
 static uint32_t gStep;           /* marquee step, 500 ms each */
 static bool     gScrolling;
 static uint8_t  gFlash;          /* half-seconds left of the bank name; gFlashLabel is what it says */
-static char     gFlashLabel[12];
+static char     gFlashLabel[20];
 
 #define FLASH_STEPS 3u
 
+void FMV_CardFlashText(const char *text, uint8_t steps)
+{
+    strncpy(gFlashLabel, text, sizeof(gFlashLabel) - 1);
+    gFlashLabel[sizeof(gFlashLabel) - 1] = 0;
+    gFlash = steps;
+    gUpdateDisplay = true;
+}
+
 void FMV_CardFlashBank(uint8_t list)
 {
+    char label[12];
     const char *name = (list >= 1 && list <= MR_CHANNELS_LIST) ? gListName[list - 1] : "";
-    FMV_BankLabel(list, name, SCAN_LIST_MODE_ALL, SCAN_LIST_MODE_MIX, gFlashLabel);
-    gFlash = FLASH_STEPS;
-    gUpdateDisplay = true;
+    FMV_BankLabel(list, name, SCAN_LIST_MODE_ALL, SCAN_LIST_MODE_MIX, label);
+    FMV_CardFlashText(label, FLASH_STEPS);
 }      /* the last card drawn needs a step every 500 ms */
 
 bool FMV_CardRow(uint8_t row)

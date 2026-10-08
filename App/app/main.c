@@ -1080,6 +1080,10 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 
 void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
+#ifdef ENABLE_FMVOICE
+    if (FMV_ToneSearchKey(bKeyPressed && !bKeyHeld))
+        return;
+#endif
 #ifdef ENABLE_FMRADIO_EMBEDDED
     if (gFmRadioMode && Key != KEY_PTT && Key != KEY_EXIT) {
         if (!bKeyHeld && bKeyPressed)

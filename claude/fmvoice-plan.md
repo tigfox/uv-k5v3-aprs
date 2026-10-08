@@ -126,7 +126,14 @@ APRS build are reused. APRS code is not compiled in.
   name flashed 1.5 s in the card row; UP/DOWN browse only the active bank, ALL or an empty bank use the stock code).
   Per-bank last channel is kept in RAM (not over a reboot); the active list itself is saved as stock. Action id 23
   is named TONE SEARCH in the menu and the CHIRP driver, with no handler until step 5 (beeps as unavailable).
-- Next: step 5, tone search and quick save.
+- Step 5a done (host tests + build, not bench tested): action id 23 = TONE SEARCH (`app/fmv_action.c`): starts the
+  stock single-frequency CTCSS/DCS scan from the main screen ("SEARCHING PL" in the card row, up to 16 s); on a hit
+  the channel is reloaded, the tone becomes the channel's **transmit** tone (receive tone untouched, so squelch is
+  not tightened by accident) and is saved to the channel; label "TX PL 100.0" from the pure `app/fmv_tone.c`.
+  Any key or PTT stops it. "NO TONE FOUND" if it times out.
+- Step 5b (quick save with band-plan offsets and a name editor) is **not done**: the stock MEM-CH / name menus
+  already save a channel, and a third key action would need a new action id. Decision pending with the user.
+- Test image: `claude/release/f4hwn.fmvoice.bin` (checksum in `claude/release/SHA256SUMS`).
 
 ## Risks and open points
 

@@ -20,6 +20,12 @@
 #include <stddef.h>
 #include "app/chFrScanner.h"
 #include "app/fmv_card.h"
+#include "app/fmv_tone.h"
+#include "app/scanner.h"
+#include "audio.h"
+#include "dcs.h"
+#include "functions.h"
+#include "ui/ui.h"
 #include "misc.h"
 #include "radio.h"
 #include "settings.h"
@@ -83,4 +89,86 @@ uint16_t FMV_BrowseNext(uint16_t from, int8_t dir)
     if (next != 0xFFFFu)
         remember(list, next);
     return next;
+}
+
+/* ---- tone search ---- */
+
+typedef enum { TONE_IDLE, TONE_SEARCHING, TONE_APPLYING } tone_state_t;
+
+#define SEARCH_LABEL_STEPS 40u          /* longer than the scanner's own 16 s limit, cleared when it ends */
+#define RESULT_STEPS        6u
+
+static tone_state_t gTone;
+static bool         gToneDcs;
+static uint8_t      gToneCode;
+
+void FMV_ActionToneSearch(void)
+{
+    if (gTone != TONE_IDLE)
+        return;
+    if (gScreenToDisplay != DISPLAY_MAIN || gScanStateDir != SCAN_OFF || SCANNER_IsScanning()
+        || gCurrentFunction == FUNCTION_TRANSMIT || gTxVfo->Modulation != MODULATION_FM) {
+        gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+        return;
+    }
+    SCANNER_Start(true);
+    gUpdateStatus      = true;
+    gCssBackgroundScan = true;
+    gTone              = TONE_SEARCHING;
+    FMV_CardFlashText("SEARCHING PL", SEARCH_LABEL_STEPS);
+}
+
+bool FMV_ToneSearchKey(bool pressed)
+{
+    if (gTone != TONE_SEARCHING)
+        return false;
+    if (pressed) {
+        SCANNER_Stop();                 /* puts the channel back as it was */
+        gTone = TONE_IDLE;
+        FMV_CardFlashText("", 0);
+    }
+    return true;
+}
+
+static void restore_channel(void)
+{
+    gVfoConfigureMode = VFO_CONFIGURE_RELOAD;     /* the search borrowed the VFO: read the channel again */
+    gFlagResetVfos    = true;
+    gUpdateStatus     = true;
+}
+
+void FMV_ToneTask500ms(void)
+{
+    if (gTone == TONE_SEARCHING && !SCANNER_IsScanning()) {
+        if (gScanUseCssResult && gScanCssResultCode != 0xFF
+            && (gScanCssResultType == CODE_TYPE_CONTINUOUS_TONE || gScanCssResultType == CODE_TYPE_DIGITAL)) {
+            gToneDcs  = gScanCssResultType == CODE_TYPE_DIGITAL;
+            gToneCode = gScanCssResultCode;
+            restore_channel();
+            gTone = TONE_APPLYING;
+        } else {
+            if (gScanCssState == SCAN_CSS_STATE_FAILED) {
+                restore_channel();
+                FMV_CardFlashText("NO TONE FOUND", RESULT_STEPS);
+            } else {
+                FMV_CardFlashText("", 0);       /* stopped by PTT: already restored */
+            }
+            gTone = TONE_IDLE;
+        }
+    } else if (gTone == TONE_APPLYING && gVfoConfigureMode == VFO_CONFIGURE_NONE && !gFlagResetVfos
+               && !gFlagReconfigureVfos) {
+        char label[FMV_TONE_LABEL_MAX];
+        if (gToneDcs) {
+            gTxVfo->freq_config_TX.CodeType = CODE_TYPE_DIGITAL;
+            gTxVfo->freq_config_TX.Code     = gToneCode;
+            FMV_ToneLabel(true, DCS_GetOption(gToneCode), label);
+        } else {
+            gTxVfo->freq_config_TX.CodeType = CODE_TYPE_CONTINUOUS_TONE;
+            gTxVfo->freq_config_TX.Code     = gToneCode;
+            FMV_ToneLabel(false, CTCSS_Options[gToneCode], label);
+        }
+        gRequestSaveChannel = 1;
+        FMV_CardFlashText(label, RESULT_STEPS);
+        gTone = TONE_IDLE;
+    }
 }

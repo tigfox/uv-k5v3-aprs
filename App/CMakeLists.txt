@@ -175,6 +175,7 @@ enable_feature(ENABLE_FMVOICE
     app/fmv_card.c
     app/fmv_bank.c
     app/fmv_action.c
+    app/fmv_tone.c
 )
 
 # ---- APRS (tigfox fork; APRS preset only) ----

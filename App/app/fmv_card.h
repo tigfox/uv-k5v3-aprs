@@ -29,6 +29,8 @@
 bool FMV_CardRow(uint8_t row);
 /* Show "BANK name" in the card row for about a second and a half (list: scan-list value). */
 void FMV_CardFlashBank(uint8_t list);
+/* Show text (up to 19 characters) in the card row for `steps` half-seconds; steps 0 clears it. */
+void FMV_CardFlashText(const char *text, uint8_t steps);
 /* Every 500 ms: advance the marquee and ask for a redraw while it scrolls. */
 void FMV_Task500ms(void);
 

@@ -5,3 +5,4 @@ __pycache__
 fmv_vectors
 *.bin
 test_fmv_bank
+test_fmv_tone
