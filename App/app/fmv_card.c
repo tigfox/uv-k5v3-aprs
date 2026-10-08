@@ -26,7 +26,8 @@
 #include "ui/helper.h"
 #include "ui/ui.h"
 
-#define CARD_COLS 18u            /* small-font characters in a row from x = 2 */
+#define CARD_CHAR_W 8u
+#define CARD_COLS 16u            /* big-font characters (8 pixels) across the screen */
 
 static uint32_t gStep;           /* marquee step, 500 ms each */
 static bool     gScrolling;
@@ -56,7 +57,8 @@ bool FMV_CardRow(uint8_t row)
     gScrolling = false;
     if (gFlash > 0) {
         memset(gFrameBuffer[row], 0, LCD_WIDTH);
-        UI_PrintStringSmallBold(gFlashLabel, 0, LCD_WIDTH - 1, row);
+        memset(gFrameBuffer[row + 1], 0, LCD_WIDTH);
+        UI_PrintString(gFlashLabel, 0, LCD_WIDTH - 1, row, CARD_CHAR_W);
         return true;
     }
     const uint16_t channel = gEeprom.ScreenChannel[gEeprom.TX_VFO];
@@ -66,7 +68,7 @@ bool FMV_CardRow(uint8_t row)
     if (!FMV_StoreLoad(channel, gEeprom.VfoInfo[gEeprom.TX_VFO].freq_config_RX.Frequency, text))
         return false;
     gScrolling = FMV_Marquee(text, CARD_COLS, gStep, window);
-    UI_PrintStringSmallNormal(window, 2, 0, row);
+    UI_PrintString(window, 0, 0, row, CARD_CHAR_W);
     return true;
 }
 
@@ -79,7 +81,7 @@ void FMV_NameRow(uint8_t row)
     SETTINGS_FetchChannelName(name, channel);
     name[16] = 0;
     if (name[0] != 0)
-        UI_PrintStringSmallBold(name, 2, 0, row);
+        UI_PrintString(name, 0, LCD_WIDTH - 1, row, CARD_CHAR_W);
 }
 
 void FMV_Task500ms(void)

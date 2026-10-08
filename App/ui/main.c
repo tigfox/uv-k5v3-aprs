@@ -2226,6 +2226,15 @@ void UI_DisplayMain(void)
             UI_PrintStringSmallNormal(s, LCD_WIDTH + 22, 0, line + 1);
             UI_PrintStringSmallNormal(t, LCD_WIDTH + 2, 0, line + 1);
 
+#ifdef ENABLE_FMVOICE       // rows 3-6 belong to the card: the tone value goes up beside the tone marks, no step size
+            if (isMainOnly() && !gDTMF_InputMode)
+            {
+                if(shift == 0)
+                {
+                    UI_PrintStringSmallNormal(String, 50, 0, 2);
+                }
+            }
+#else
             if (isMainOnly() && !gDTMF_InputMode)
             {
                 if(shift == 0)
@@ -2243,6 +2252,7 @@ void UI_DisplayMain(void)
                 }
                 UI_PrintStringSmallNormal(String, 46, 0, 6);
             }
+#endif
         }
         else
         {
@@ -2588,7 +2598,7 @@ void UI_DisplayMain(void)
 
 #ifdef ENABLE_FMVOICE
     if (!gDTMF_InputMode)
-        FMV_NameRow(4);
+        FMV_NameRow(3);
     // idle (the center line is free): the repeater's city / landmark, scrolling if it is long
     if (center_line == CENTER_LINE_NONE && !gDTMF_InputMode)
         FMV_CardRow(5);

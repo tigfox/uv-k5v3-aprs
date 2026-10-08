@@ -24,10 +24,10 @@
  * in the row the RSSI bar uses while receiving, so it shows whenever the radio is idle. Text wider than the row
  * scrolls (the callsign is the channel name and the frequency the screen's own: both are already there). */
 
-/* Draw the text of the channel the main VFO is on at text row `row` (0-7). Returns false (nothing drawn) for a
+/* Draw the text of the channel the main VFO is on in the big font, rows `row` and `row` + 1. Returns false (nothing drawn) for a
  * frequency channel, a channel above FMV_INFO_SLOTS, or one with no text that belongs to it. */
 bool FMV_CardRow(uint8_t row);
-/* The channel name (the callsign) in bold at text row `row`, when the display mode is plain frequency. */
+/* The channel name (the callsign) in the big font (two rows: `row`, `row` + 1), when the display mode is plain frequency. */
 void FMV_NameRow(uint8_t row);
 /* Show "BANK name" in the card row for about a second and a half (list: scan-list value). */
 void FMV_CardFlashBank(uint8_t list);
