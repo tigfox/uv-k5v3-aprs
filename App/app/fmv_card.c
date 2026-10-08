@@ -70,6 +70,18 @@ bool FMV_CardRow(uint8_t row)
     return true;
 }
 
+void FMV_NameRow(uint8_t row)
+{
+    const uint16_t channel = gEeprom.ScreenChannel[gEeprom.TX_VFO];
+    if (!IS_MR_CHANNEL(channel) || gEeprom.CHANNEL_DISPLAY_MODE != MDF_FREQUENCY)
+        return;                     /* the other display modes already print the name */
+    char name[17];
+    SETTINGS_FetchChannelName(name, channel);
+    name[16] = 0;
+    if (name[0] != 0)
+        UI_PrintStringSmallBold(name, 2, 0, row);
+}
+
 void FMV_Task500ms(void)
 {
     gStep++;
