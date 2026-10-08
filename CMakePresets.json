@@ -171,6 +171,7 @@
                 "ENABLE_VOICE": false,
                 "ENABLE_FEAT_F4HWN_FULL_WATCH": false,
                 "ENABLE_FEAT_F4HWN_MENU_CAT": false,
+                "DISPLAY_VERSION_OVERRIDE": "KD2DCM-APRS",
                 "EDITION_STRING": "APRS",
                 "TARGET": "f4hwn.aprs"
             }

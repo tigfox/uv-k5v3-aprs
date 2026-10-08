@@ -7,7 +7,12 @@
 
 #ifdef ENABLE_FEAT_F4HWN
     const char Version[]         = AUTHOR_STRING_2 " " VERSION_STRING_2;
+#ifdef DISPLAY_VERSION_OVERRIDE
+    /* The splash line only (APRS preset): the version string sent to UV Studio stays as it is. */
+    const char DisplayVersion[]  = DISPLAY_VERSION_OVERRIDE;
+#else
     const char DisplayVersion[]  = AUTHOR_STRING_2 " " DISPLAY_VERSION_STRING_2;
+#endif
     const char Edition[]         = EDITION_STRING;
     const char BuildDate[]       = __DATE__;
     const char BuildTime[]       = __TIME__;

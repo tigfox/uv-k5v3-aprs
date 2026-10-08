@@ -419,6 +419,13 @@ replace it. A message to us also lights the backlight. The panel and box show on
 RSSI bar and the VFO A rows are untouched. Layout only: `isMainOnly()` returns false while APRS is on, listening
 stays main-only (`app/aprs_task.c`). Unchanged presets are byte-identical.
 
+## Splash (scope addition, user, 2026-10-07)
+
+The boot screen's version line (`F4HWN v6.1.0`) reads **`KD2DCM-APRS`** in the APRS preset (CMake variable
+`DISPLAY_VERSION_OVERRIDE` in `CMakePresets.json`; change it there). Only the splash text changes: the
+version string UV Studio reads over the cable stays `EGZUMER+F4HWN v6.1.0` so its firmware detection is
+unaffected. The line below it still reads `APRS Edition`.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

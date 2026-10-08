@@ -78,6 +78,11 @@ if(ENABLE_FEAT_F4HWN)
     )
 endif()
 
+# Splash line replacement (the APRS preset shows the station name instead of "F4HWN v6.x.y")
+if(DISPLAY_VERSION_OVERRIDE)
+    target_compile_definitions(App INTERFACE "DISPLAY_VERSION_OVERRIDE=\"${DISPLAY_VERSION_OVERRIDE}\"")
+endif()
+
 target_compile_definitions(App INTERFACE 
     "AUTHOR_STRING=\"${AUTHOR_STRING}\""
     "VERSION_STRING=\"${VERSION_STRING}\""
