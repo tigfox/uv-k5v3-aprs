@@ -209,3 +209,50 @@ def test_upload_never_writes_over_the_aprs_record(drv):
     drv.do_upload(r)
     assert not any(off >= 0xD000 for off, _ in fake.writes)
     assert bytes(fake.eeprom[0xD000:0xD000 + 96]) == aprs
+
+
+def banks_csv(tmp_path):
+    lines = open(os.path.join(HERE, "sample_repeaterbook.csv")).read().splitlines()
+    cells = ["Scanlist", "Home", "Home", "Ski", "", "ALL", "7", "Hom"]
+    out = [lines[0] + "," + cells[0]] + [f"{l},{c}" for l, c in zip(lines[1:8], cells[1:])]
+    path = tmp_path / "banks.csv"
+    path.write_text("\n".join(out) + "\n")
+    return str(path)
+
+
+def scanlist_of(radio, number):
+    return str(radio.get_memory(number).extra["scanlists"].value)
+
+
+def test_csv_bank_column_names_banks_and_assigns_channels(drv, tmp_path):
+    sys.path.insert(0, HERE)
+    import chirp_cli
+    img = tmp_path / "out.img"
+    chirp_cli.csv2img(drv, banks_csv(tmp_path), str(img))
+    radio = new_radio(drv, img.read_bytes())
+    assert [scanlist_of(radio, n) for n in range(1, 8)] == \
+        ["HOM [1]", "HOM [1]", "SKI [2]", "OFF", "ALL", "List [7]", "HOM [1]"]
+    assert radio._get_scanlist_name(0) == "HOM" and radio._get_scanlist_name(1) == "SKI"
+
+
+def test_csv_bank_column_reuses_names_of_a_base_image(drv, tmp_path):
+    sys.path.insert(0, HERE)
+    import chirp_cli
+    base = new_radio(drv)
+    base._memobj.listname[9].name = b"SKI "
+    base_path = tmp_path / "base.img"
+    base_path.write_bytes(base.get_mmap().get_byte_compatible().get_packed())
+    img = tmp_path / "out.img"
+    chirp_cli.csv2img(drv, banks_csv(tmp_path), str(img), str(base_path))
+    radio = new_radio(drv, img.read_bytes())
+    assert scanlist_of(radio, 3) == "SKI [10]"           # the existing SKI list, not a new one
+    assert scanlist_of(radio, 1) == "HOM [1]"            # Home took the first free list
+
+
+def test_csv_without_a_bank_column_leaves_banks_alone(drv, tmp_path):
+    sys.path.insert(0, HERE)
+    import chirp_cli
+    img = tmp_path / "out.img"
+    chirp_cli.csv2img(drv, os.path.join(HERE, "sample_repeaterbook.csv"), str(img))
+    radio = new_radio(drv, img.read_bytes())
+    assert scanlist_of(radio, 1) == "OFF" and radio._get_scanlist_name(0) == ""

@@ -49,5 +49,16 @@ kk7ds/chirp as `CHIRP_SRC`, its Python dependencies, and armel's driver as `FMV_
     python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --download-mmap radio.img
     python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --upload-mmap fmvoice.img
 
+Banks from the CSV: add a column named `Scanlist` (or `Bank`) to the CSV. A cell is empty (no bank), `ALL`, a list
+number 1-24, or a bank **name**. Names are upper-cased and cut to 3 characters (what the radio shows); a name
+that a list already has is reused, a new name takes the first list without a name and names it. CHIRP's own CSV
+import ignores that column, so go through `csv2img` with the image you just downloaded from the radio:
+
+    python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --download-mmap radio.img
+    python3 chirp_cli.py csv2img repeaters.csv new.img --base radio.img   # keeps the radio's settings, sets channels + banks
+    # then upload new.img with --upload-mmap, or open it in CHIRP (with the FM Voice module loaded) and upload there
+
+Without `--base` the image has no radio settings: fine for looking at, not for uploading.
+
 `csv2img` prints what the driver objects to (text over 45 characters, power levels the radio lacks). Upload
 overwrites the radio's channels (and settings stored in the image): download first and keep a copy.
