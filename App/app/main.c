@@ -25,6 +25,9 @@
 #endif
 #include "app/generic.h"
 #include "app/main.h"
+#ifdef ENABLE_FMVOICE
+    #include "app/fmv_action.h"
+#endif
 #include "app/menu.h"
 #include "app/scanner.h"
 
@@ -1037,6 +1040,10 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
                 return;
             }
 
+#ifdef ENABLE_FMVOICE
+            Next = FMV_BrowseNext(Channel + Direction, Direction);
+            if (Next == 0xFFFF)
+#endif
             Next = RADIO_FindNextChannel(Channel + Direction, Direction, false, 0);
             if (Next == 0xFFFF)
                 return;

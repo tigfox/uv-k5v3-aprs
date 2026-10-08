@@ -60,6 +60,12 @@ def load_csv(radio):
         radio.set_memory(mem)
 
 
+def test_key_action_names_follow_the_firmware(drv):
+    names = drv.KEYACTIONS_LIST
+    assert names[22] == "BANK" and names[23] == "TONE SEARCH" and len(names) == 24
+    assert "FOX HUNT" not in names
+
+
 def test_driver_is_a_separate_radio(drv):
     assert drv.UVK5RadioF4HWNFMVoice.MODEL == "UV-K1 & UV-K5 V3 (F4HWN FM Voice)"
     assert drv.UVK5RadioF4HWNFMVoice.get_features(new_radio(drv)).has_comment is True

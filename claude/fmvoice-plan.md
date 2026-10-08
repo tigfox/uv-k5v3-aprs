@@ -120,7 +120,13 @@ APRS build are reused. APRS code is not compiled in.
   in git: GPL); `fmv_codec.py` (twin of the C codec, pinned to it); `check_csv.py`; `test_chirp_driver.py` runs the
   real CHIRP code: CSV import -> image -> the C decoder, download/upload against a fake radio, and the guard that
   keeps the table off the APRS record. Not yet tried on a real radio.
-- Next: step 3, the card on the main screen.
+- Step 3 done: the card row on the main screen (marquee), not yet bench tested.
+- Step 4 done (host tests + build, not bench tested): `app/fmv_bank.c` (pure: next channel in a bank, landing channel,
+  label), `app/fmv_action.c` (action id 22 = BANK: next non-empty scan list, back to the channel it was left on,
+  name flashed 1.5 s in the card row; UP/DOWN browse only the active bank, ALL or an empty bank use the stock code).
+  Per-bank last channel is kept in RAM (not over a reboot); the active list itself is saved as stock. Action id 23
+  is named TONE SEARCH in the menu and the CHIRP driver, with no handler until step 5 (beeps as unavailable).
+- Next: step 5, tone search and quick save.
 
 ## Risks and open points
 

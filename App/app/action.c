@@ -54,6 +54,9 @@
 #if defined(ENABLE_FEAT_F4HWN_FOXHUNT) || defined(ENABLE_FEAT_F4HWN_BEACON) || defined(ENABLE_FEAT_F4HWN_OVERLAY_APPS)
     #include "app/foxhunt.h"
 #endif
+#ifdef ENABLE_FMVOICE
+    #include "app/fmv_action.h"
+#endif
 #ifdef ENABLE_FEAT_F4HWN_ACTION_PICKER
     #include "ui/menu.h"
 #endif
@@ -128,6 +131,9 @@ void (*const action_opt_table[ACTION_OPT_LEN])(void) = {
 #endif
 #if defined(ENABLE_FEAT_F4HWN_BEACON) || defined(ENABLE_FEAT_F4HWN_OVERLAY_APPS)
     [ACTION_OPT_BEACON] = &ACTION_Beacon,
+#endif
+#ifdef ENABLE_FMVOICE
+    [ACTION_OPT_FOXHUNT] = &FMV_ActionBank,     /* ids 22 / 23 are free in this build: FM Voice names them BANK / TONE SEARCH */
 #endif
 };
 
@@ -349,7 +355,7 @@ inline static bool ACTION_IsBlockedInFM(uint8_t action)
 #if defined(ENABLE_FEAT_F4HWN_BEAM) || defined(ENABLE_FEAT_F4HWN_OVERLAY_APPS)
         case ACTION_OPT_BEAM:
 #endif
-#if defined(ENABLE_FEAT_F4HWN_FOXHUNT) || defined(ENABLE_FEAT_F4HWN_OVERLAY_APPS)
+#if defined(ENABLE_FEAT_F4HWN_FOXHUNT) || defined(ENABLE_FEAT_F4HWN_OVERLAY_APPS) || defined(ENABLE_FMVOICE)
         case ACTION_OPT_FOXHUNT:
 #endif
 #if defined(ENABLE_FEAT_F4HWN_BEACON) || defined(ENABLE_FEAT_F4HWN_OVERLAY_APPS)

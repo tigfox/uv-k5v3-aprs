@@ -4,3 +4,4 @@ __pycache__
 .pytest_cache
 fmv_vectors
 *.bin
+test_fmv_bank

@@ -129,6 +129,7 @@ def make(src_text, codec_text):
     if "UVK5RadioEgzumer" in t:
         raise SystemExit("make_driver: the class name is used elsewhere in the driver; update this script")
     t = replace_once(t, '@directory.register\nclass UVK5RadioF4HWNFMVoice', codec_text + '\n\n@directory.register\nclass UVK5RadioF4HWNFMVoice', "codec")
+    t = replace_once(t, '                   "FOX HUNT",\n                   "BEACON"\n', '                   "BANK",\n                   "TONE SEARCH"\n', "key actions 22 / 23")
     t = replace_once(t, "        rf.has_comment = False", "        rf.has_comment = True", "has_comment")
     t = replace_once(t, "    upload_advanced = False\n", "    upload_advanced = False\n" + CLASS_METHODS, "class attributes")
     t = replace_once(t, "    def get_memory(self, number):\n\n        mem = chirp_common.Memory()",

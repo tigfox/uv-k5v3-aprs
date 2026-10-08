@@ -27,6 +27,8 @@
 /* Draw the text of the channel the main VFO is on at text row `row` (0-7). Returns false (nothing drawn) for a
  * frequency channel, a channel above FMV_INFO_SLOTS, or one with no text that belongs to it. */
 bool FMV_CardRow(uint8_t row);
+/* Show "BANK name" in the card row for about a second and a half (list: scan-list value). */
+void FMV_CardFlashBank(uint8_t list);
 /* Every 500 ms: advance the marquee and ask for a redraw while it scrolls. */
 void FMV_Task500ms(void);
 
