@@ -177,6 +177,22 @@
             }
         },
         {
+            "name": "Repeater",
+            "inherits": "Fusion",
+            "cacheVariables": {
+                "ENABLE_REPEATER": true,
+                "ENABLE_US_2M_70CM_ONLY": true,
+                "ENABLE_SPECTRUM": false,
+                "ENABLE_FEAT_F4HWN_SPECTRUM": false,
+                "ENABLE_FMRADIO": false,
+                "ENABLE_VOICE": false,
+                "ENABLE_FEAT_F4HWN_FULL_WATCH": false,
+                "DISPLAY_VERSION_OVERRIDE": "KD2DCM-VOICE",
+                "EDITION_STRING": "Voice",
+                "TARGET": "f4hwn.repeater"
+            }
+        },
+        {
             "name": "FieldOps",
             "inherits": "Fusion",
             "cacheVariables": {
@@ -242,6 +258,10 @@
         {
             "name": "Fusion",
             "configurePreset": "Fusion"
+        },
+        {
+            "name": "Repeater",
+            "configurePreset": "Repeater"
         },
         {
             "name": "APRS",

@@ -135,6 +135,16 @@ void Main(void)
 
     SETTINGS_LoadCalibration();
 
+#ifdef ENABLE_REPEATER
+    // Main VFO only, whatever was stored: no dual watch, no cross band (the RxMode menu item and key action are gone)
+    gEeprom.DUAL_WATCH = DUAL_WATCH_OFF;
+    gEeprom.CROSS_BAND_RX_TX = CROSS_BAND_OFF;
+    #ifdef ENABLE_FEAT_F4HWN
+        gDW = gEeprom.DUAL_WATCH;
+        gCB = gEeprom.CROSS_BAND_RX_TX;
+    #endif
+#endif
+
 #ifdef ENABLE_APRS
     APRS_StoreInit();
     APRS_TaskInit();

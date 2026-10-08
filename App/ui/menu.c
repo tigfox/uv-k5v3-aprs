@@ -195,7 +195,9 @@ const t_menu_item MenuList[] =
 #else
     {"BatVol",      MENU_VOL           }, // was "VOL"
 #endif
-    {"RxMode",      MENU_TDR           },
+#ifndef ENABLE_REPEATER
+    {"RxMode",      MENU_TDR           },   // the Repeater build has no dual watch
+#endif
     {"Sql",         MENU_SQL           },
 #ifdef ENABLE_FEAT_F4HWN
     {"SetPwr",      MENU_SET_PWR       },

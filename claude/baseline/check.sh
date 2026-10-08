@@ -4,9 +4,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 status=0
-for p in Fusion Transfer FieldOps Labs Max; do
+for p in Fusion Transfer FieldOps Labs Max APRS; do
   s=$(echo "$p" | tr '[:upper:]' '[:lower:]')
   new="build/$p/f4hwn.$s.bin"; old="claude/baseline/f4hwn.$s.bin"
+  # the APRS image is guarded against the field-tested release that is kept in git
+  [[ "$p" == "APRS" ]] && old="claude/release/f4hwn.aprs.bin"
   if [[ ! -f "$new" ]]; then echo "$p: not built"; status=1; continue; fi
   if [[ $(wc -c <"$new") -ne $(wc -c <"$old") ]]; then echo "$p: SIZE DIFFERS"; status=1; continue; fi
   n=$( (cmp -l "$new" "$old" || true) | wc -l | tr -d ' ')

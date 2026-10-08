@@ -69,6 +69,9 @@ center_line_t center_line = CENTER_LINE_NONE;
 
     static bool isMainOnly()
     {
+#ifdef ENABLE_REPEATER
+        return true;        // one VFO on the screen, always
+#endif
 #ifdef ENABLE_APRS
         // Layout only: with APRS on keep the two-row screen, so the APRS panel has the second VFO's half.
         // Listening is main-only anyway (app/aprs_task.c).

@@ -167,6 +167,10 @@ enable_feature(ENABLE_SPECTRUM
     app/spectrum.c
 )
 
+# ---- Repeater (tigfox fork; Repeater preset only) ----
+
+enable_feature(ENABLE_REPEATER)
+
 # ---- APRS (tigfox fork; APRS preset only) ----
 
 enable_feature(ENABLE_APRS
