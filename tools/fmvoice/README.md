@@ -48,7 +48,7 @@ top of the download (channels by `Location`, place text from Comment, banks from
 the CSV does not mention stay as they are), keeps the result as `fmvoice-upload-<time>.img`, and asks you to type
 `yes` before uploading (`--yes` skips the question). `--dry-run --base some.img` builds the image without a radio.
 Close CHIRP first (one program can hold the serial port), and restart the radio after the upload. Restore a backup with
-`chirp_cli.py -s PORT -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --upload-mmap` and `--mmap fmvoice-backup-<time>.img`.
+`chirp_cli.py -s PORT -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --mmap fmvoice-backup-<time>.img --upload-mmap`.
 
 ## CHIRP from the command line
 
@@ -57,19 +57,43 @@ kk7ds/chirp as `CHIRP_SRC`, its Python dependencies, and armel's driver as `FMV_
 
     python3 chirp_cli.py csv2img repeaters.csv fmvoice.img            # RepeaterBook CSV -> radio image, no radio
     python3 chirp_cli.py --mmap fmvoice.img -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --list-mem
-    python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --download-mmap radio.img
-    python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --upload-mmap fmvoice.img
+    python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --mmap radio.img --download-mmap
+    python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --mmap fmvoice.img --upload-mmap
 
 Banks from the CSV: add a column named `Scanlist` (or `Bank`) to the CSV. A cell is empty (no bank), `ALL`, a list
 number 1-24, or a bank **name**. Names are upper-cased and cut to 3 characters (what the radio shows); a name
 that a list already has is reused, a new name takes the first list without a name and names it. CHIRP's own CSV
 import ignores that column, so go through `csv2img` with the image you just downloaded from the radio:
 
-    python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --download-mmap radio.img
+    python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --mmap radio.img --download-mmap
     python3 chirp_cli.py csv2img repeaters.csv new.img --base radio.img   # keeps the radio's settings, sets channels + banks
     # then upload new.img with --upload-mmap, or open it in CHIRP (with the FM Voice module loaded) and upload there
+
+**Skip**: CHIRP's Skip column (`S`) means scan list OFF. This firmware leaves a channel that is in no list out of every
+scan, ALL included (and clears the per-channel exclude bit at every boot, so that bit cannot be used). A skipped channel
+is also in no bank: the Scanlist column is ignored for it. WX channels are the usual case. Without a bank a channel can
+only be reached with the arrow keys in ALL. A channel the CSV leaves with no bank (empty cell) is in no list either,
+so it is not scanned: give scannable channels a bank or `ALL`.
 
 Without `--base` the image has no radio settings: fine for looking at, not for uploading.
 
 `csv2img` prints what the driver objects to (text over 45 characters, power levels the radio lacks). Upload
 overwrites the radio's channels (and settings stored in the image): download first and keep a copy.
+
+## Connecting: USB-C, K-plug cable, or an AIOC
+
+The radio speaks CHIRP's UV-K5 protocol at **38400 baud**. `chirp_cli.py` opens every port at 38400 with DTR and RTS
+low. Plain `chirpc` opens at 9600 and the radio then never answers (CHIRP reports `Header short read`); the
+`upload-csv` command always set 38400, which is why it worked first. Learned 2026-10-08 with an AIOC
+(`/dev/cu.usbmodem...`, out-of-the-box settings; hardware documentation: github.com/skuep/AIOC):
+
+- The AIOC's port does reach the radio's programming UART (UV Studio and `upload-csv` both work through it).
+- A bare hello probe is a quick check: send CHIRP's hello (`14 05 04 00 6a 39 57 64`, framed) and expect a 48-byte
+  reply starting `ab cd 28`. Zero bytes back means the radio is off, restarting, or in a menu, or another program
+  (a UV Studio tab, CHIRP) has the port.
+- The AIOC can key the radio's PTT from DTR / RTS, so the tool never asserts them. Whether the early failures were
+  also caused by those lines was not isolated; the baud rate alone explains them.
+- The plain `-s ... --download-mmap` path at 38400 was not re-run against the radio after the baud default was added
+  (unit test only); `upload-csv --dry-run` was.
+- CHIRP's GUI said `Failed open` on the AIOC port; not diagnosed.
+- Keep radio output files (backups, images) in the git-ignored `build/` folder.

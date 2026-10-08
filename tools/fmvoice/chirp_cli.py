@@ -23,6 +23,7 @@ import fmv_banks  # noqa: E402
 CHIRP_SRC = os.path.expanduser(os.environ.get("CHIRP_SRC", ""))
 UPSTREAM = os.path.expanduser(os.environ.get("FMV_UPSTREAM_DRIVER", "~/Downloads/f4hwn.chirp.v6.1.0.py"))
 IMAGE_SIZE = 0x10000
+RADIO_BAUD = 38400
 os.environ.setdefault("CHIRP_TESTENV", "1")      # without a terminal CHIRP sends all output to a log file
 
 
@@ -82,17 +83,19 @@ def apply_csv(radio, csv_path):
     source = generic_csv.CSVRadio(csv_path)
     cells = read_bank_cells(csv_path)
     lo, hi = source.get_features().memory_bounds
-    numbers = []
+    numbers, skipped = [], set()
     for number in range(lo, hi + 1):
         mem = source.get_memory(number)
         if mem.empty:
             continue
         numbers.append(number)
+        if mem.skip == "S":
+            skipped.add(number)
         for msg in radio.validate_memory(mem):
             print(f"  channel {number} ({mem.name}): {msg}")
         radio.set_memory(mem)
     if cells is not None:
-        names, values, warnings = fmv_banks.assign_banks(list_names(radio), [cells.get(n, "") for n in numbers])
+        names, values, warnings = fmv_banks.assign_banks(list_names(radio), ["" if n in skipped else cells.get(n, "") for n in numbers])   # a skipped channel is in no bank
         old = list_names(radio)
         for i, name in enumerate(names):
             if name != old[i]:
@@ -169,7 +172,26 @@ def upload_csv(drv, args):
     return 0
 
 
+def hold_modem_lines_low():
+    """Open every serial port at the radio's 38400 baud (chirpc opens at 9600 and the radio does not answer) with DTR and
+    RTS low (an AIOC keys the radio's PTT from those lines; CHIRP's own open asserts both)."""
+    import serial
+    original = serial.Serial.__init__
+
+    def init(self, port=None, *args, **kwargs):
+        kwargs.setdefault("baudrate", RADIO_BAUD)
+        original(self, None, *args, **kwargs)          # no port yet: nothing is opened (or asserted) here
+        if port is not None:
+            self.dtr = False
+            self.rts = False
+            self.port = port
+            self.open()
+
+    serial.Serial.__init__ = init
+
+
 def main(argv):
+    hold_modem_lines_low()
     drv = load_driver()
     if len(argv) > 2 and argv[1] == "upload-csv":
         return upload_csv(drv, argv[2:])

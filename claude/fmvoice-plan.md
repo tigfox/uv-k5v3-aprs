@@ -139,6 +139,26 @@ APRS build are reused. APRS code is not compiled in.
   upload-csv` (backup, convert, confirm, upload); band policy changed to receive everywhere / transmit on 2 m, 70 cm,
   FRS/GMRS, MURS (`app/fmv_bands.c`). Bench: BANK key works (confirmed by the user); channel list `FMV_Ship.csv` (123
   channels, banks WX FRS GMR MUR REP) uploaded over USB serial with a backup taken first.
+- Field test and bench (2026-10-08, later): repeater settings stored and displayed well, several repeaters opened, no voice
+  contact confirmed (quiet afternoon). Two problems: the ScList menu showed numbers only, and scanning ALL held on the
+  first channel. Cause of both: the radio had **no bank data** - all 24 list names blank and all 123 channels in list 0
+  (OFF), which this firmware treats as "in no list, not even ALL" (`RADIO_IsChannelInScanList`); with no valid channel the
+  scanner falls back to channel 1 and stays there. Why the earlier bank upload was gone is not known (reflash or reset
+  of the config bank is the suspect). Fixed by re-uploading `FMV_Ship.csv` (read back and compared with the image:
+  channels, names, attributes, list names match). Banks now FRS GMR MUR REP; the 7 WX channels are in no list.
+- Skip (2026-10-08): CHIRP's Skip "S" is now scan list OFF in the driver (`make_driver.py`) and in the CSV bank step.
+  The firmware's per-channel exclude bit is **not usable**: `settings.c` clears it for every channel at every boot.
+  A skipped channel is not in a bank either (reachable with the arrow keys in ALL only). Tests: 35 pass, including
+  `test_skip_is_scan_list_off_and_comes_back` and `test_skipped_csv_channel_is_in_no_bank`.
+- AIOC programming (2026-10-08): the radio speaks CHIRP's protocol at 38400 baud through the AIOC's serial port
+  (`/dev/cu.usbmodem...`); `chirp_cli.py` now opens ports at 38400 with DTR/RTS low (the AIOC can key PTT from them).
+  Plain `chirpc` at 9600 gets `Header short read`. Details in `tools/fmvoice/README.md` ("Connecting").
+  `upload-csv` was run live (download, build, upload, read back). Test setup: pyserial in a venv in `build/venv`,
+  CHIRP cloned beside the repo (`../chirp`), armel's driver as `build/FMVoice/Drivers/f4hwn.chirp.v6.1.0.py`.
+- Still to do from this field test: longer bank names (the firmware stores 4 bytes per name and shows 3; showing all 4
+  would give GMRS / MURS in full, a longer table needs a new EEPROM mapping and driver change - user to choose);
+  re-run the plain `chirp_cli.py -s ... --download-mmap` path on the radio; find out why the bank data was lost;
+  an ALL scan and the ScList menu need a field check after the upload.
 - Step 6 done: `claude/fmvoice-card.html` (radio card) and `tools/fmvoice/README.md`.
 - Still open: bench list (tone search on a real repeater, scanning inside a bank, weak-signal tone detection, scan speed,
   CHIRP round trip with the FM Voice driver in the GUI); a permanent bank tag on the main screen (offered, not built);

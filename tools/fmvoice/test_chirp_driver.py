@@ -84,6 +84,41 @@ def test_csv_comments_reach_the_image_and_come_back(drv):
     assert r.get_memory(4).name == "N3DDD"                            # the callsign is the channel name, as before
 
 
+def test_skip_is_scan_list_off_and_comes_back(drv):
+    r = new_radio(drv)
+    mems = csv_memories()
+    mems[0].skip, mems[1].skip = "S", ""
+    r.set_memory(mems[0])
+    r.set_memory(mems[1])
+    r._memobj.ch_attr[1].scanlist = 4                              # channel 2 is in list 4
+    assert r.get_memory(1).skip == "S" and int(r._memobj.ch_attr[0].scanlist) == 0
+    assert r.get_memory(2).skip == ""
+    mems[0].skip = ""
+    r._memobj.ch_attr[0].scanlist = 2
+    assert r.get_memory(1).skip == ""
+
+
+def test_skipped_csv_channel_is_in_no_bank(drv, tmp_path):
+    import chirp_cli
+    src = tmp_path / "s.csv"
+    src.write_text(open(os.path.join(HERE, "sample_repeaterbook.csv")).read())
+    rows = src.read_text().splitlines()
+    out = [rows[0] + ",Skip,Scanlist"]
+    for i, line in enumerate(rows[1:]):
+        out.append(line + (",S" if i == 0 else ",") + ",WX")
+    src.write_text("\n".join(out) + "\n")
+    r = new_radio(drv)
+    chirp_cli.apply_csv(r, str(src))
+    assert int(r._memobj.ch_attr[0].scanlist) == 0                 # skipped: in no bank
+    assert int(r._memobj.ch_attr[1].scanlist) == 1                 # not skipped: bank WX
+    assert chirp_cli.list_names(r)[0] == "WX"
+
+
+def test_an_empty_memory_is_never_skipped(drv):
+    r = new_radio(drv)
+    assert r.get_memory(5).skip == ""
+
+
 def test_cut_text_is_warned_about(drv):
     r = new_radio(drv)
     mem = csv_memories()[6]
@@ -290,3 +325,15 @@ def test_upload_csv_asks_first_and_dry_run_never_touches_the_radio(drv, tmp_path
     (tmp_path / "base.img").write_bytes(b"\xff" * 0x10000)
     assert chirp_cli.upload_csv(drv, [banks_csv(tmp_path), "--base", "base.img", "--dry-run"]) == 0
     assert fake.writes == []
+
+
+def test_serial_ports_open_at_38400_with_dtr_and_rts_low(drv, monkeypatch):
+    import serial
+    import chirp_cli
+    seen = []
+    baud = []
+    monkeypatch.setattr(serial.Serial, "__init__", serial.Serial.__init__)       # restored after the test
+    monkeypatch.setattr(serial.Serial, "open", lambda self: (seen.append((self.port, self.dtr, self.rts)), baud.append(self.baudrate)))
+    chirp_cli.hold_modem_lines_low()
+    serial.Serial(port="/dev/cu.test", baudrate=38400, timeout=0.5)
+    assert seen == [("/dev/cu.test", False, False)] and baud == [38400]

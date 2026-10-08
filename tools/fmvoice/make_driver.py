@@ -10,7 +10,8 @@ producing a wrong driver:
   - the radio is listed as "UV-K1 & UV-K5 V3 (F4HWN FM Voice)" so it does not clash with the stock driver;
   - download also reads the info table (EEPROM 0xD000-0xFFFF); upload writes it only when it looks like that table
     (never over the APRS build's settings record, which lives at the same address);
-  - get_memory / set_memory carry the comment, validate_memory warns about text that will be cut.
+  - get_memory / set_memory carry the comment, validate_memory warns about text that will be cut;
+  - CHIRP's Skip "S" is scan list OFF (0): the firmware leaves a channel in no list out of every scan, ALL included.
 """
 import os
 import sys
@@ -61,14 +62,32 @@ CLASS_METHODS = '''
         rec, _cut = fmv_encode(int(self._memobj.channel[mem.number - 1].freq), text)
         self._mmap.set(off, rec)
 
+    def _skip_attr(self, number):
+        """The channel attribute of a memory channel, or None (a VFO or special memory)."""
+        if isinstance(number, str) or not 1 <= number <= MR_CHANNELS_MAX:
+            return None
+        return self._memobj.ch_attr[number - 1]
+
+    def _load_skip(self, mem):
+        """In this firmware a channel in no scan list (OFF) is left out of every scan, ALL included: that is CHIRP's Skip."""
+        attr = self._skip_attr(mem.number)
+        mem.skip = "S" if attr is not None and not mem.empty and int(attr.scanlist) == 0 else ""
+
+    def _store_skip(self, mem):
+        attr = self._skip_attr(mem.number)
+        if attr is not None and not mem.empty and mem.skip == "S":
+            attr.scanlist = 0
+
     def get_memory(self, number):
         mem = self._f4hwn_get_memory(number)
         self._load_comment(mem)
+        self._load_skip(mem)
         return mem
 
     def set_memory(self, memory):
         result = self._f4hwn_set_memory(memory)
         self._store_comment(memory)
+        self._store_skip(memory)
         return result
 
 '''
@@ -131,6 +150,7 @@ def make(src_text, codec_text):
     t = replace_once(t, '@directory.register\nclass UVK5RadioF4HWNFMVoice', codec_text + '\n\n@directory.register\nclass UVK5RadioF4HWNFMVoice', "codec")
     t = replace_once(t, '                   "FOX HUNT",\n                   "BEACON"\n', '                   "BANK",\n                   "TONE SEARCH"\n', "key actions 22 / 23")
     t = replace_once(t, "        rf.has_comment = False", "        rf.has_comment = True", "has_comment")
+    t = replace_once(t, '        rf.valid_skips = [""]', '        rf.valid_skips = ["", "S"]', "valid_skips")
     t = replace_once(t, "    upload_advanced = False\n", "    upload_advanced = False\n" + CLASS_METHODS, "class attributes")
     t = replace_once(t, "    def get_memory(self, number):\n\n        mem = chirp_common.Memory()",
                      "    def _f4hwn_get_memory(self, number):\n\n        mem = chirp_common.Memory()", "get_memory")
