@@ -1,0 +1,8 @@
+Location,Name,Frequency,Duplex,Offset,Tone,rToneFreq,cToneFreq,DtcsCode,DtcsPolarity,Mode,TStep,Comment,URCALL,RPT1CALL,RPT2CALL,Digital Code
+1,W3AAA,443.10000,+,5.00000,Tone,103.5,88.5,023,NN,FM,5,"Biglerville",,,,
+2,W3BBB,443.05000,+,5.00000,Tone,151.4,88.5,023,NN,FM,5,"Biglerville,  Big Flat So Mt",,,,
+3,W3CCC,145.35000,-,0.60000,Tone,103.5,88.5,023,NN,FM,5,"Gettysburg",,,,
+4,N3DDD,146.46000,-,0.60000,Tone,67.0,88.5,023,NN,FM,5,"Mechanicsburg, Three Square Hollow",,,,
+5,N3EEE,443.30000,+,5.00000,Tone,67.0,67.0,023,NN,FM,5,"Enola, Blue Mountain at Lamb's Gap",,,,
+6,K3FFF,147.06000,+,0.60000,,88.5,88.5,023,NN,FM,5,"",,,,
+7,K3GGG,146.94000,-,0.60000,Tone,110.9,88.5,023,NN,FM,5,"A very long town name, with a landmark description that goes on well past the limit of the record",,,,

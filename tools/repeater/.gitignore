@@ -2,3 +2,5 @@ test_rpt_info
 *.dSYM
 __pycache__
 .pytest_cache
+rpt_vectors
+*.bin

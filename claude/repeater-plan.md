@@ -109,6 +109,18 @@ APRS build are reused. APRS code is not compiled in.
 6. Radio card and docs; release image with checksum.
 7. Bench list (tone-scan reliability on weak signals, scan speed with many lists, save wear, CHIRP round trip).
 
+## Status (2026-10-08)
+
+- Step 0 done: `Repeater` preset (89 KiB flash, 11 KiB RAM), main-only layout, no RxMode, splash `KD2DCM-VOICE`;
+  `claude/baseline/check.sh` now also guards the APRS image against the field-tested release.
+- Step 1 done: `app/rpt_info.c` (record, frequency check, text rules, split at the first comma), storage mapping
+  (EEPROM 0xD000-0xFFFF -> bank-relative flash 0xB000), `app/rpt_store.c`. 45 C checks.
+- Step 2 done: `tools/repeater/make_driver.py` builds the CHIRP driver from armel's by anchored replacement (not kept
+  in git: GPL); `rpt_codec.py` (twin of the C codec, pinned to it); `check_csv.py`; `test_chirp_driver.py` runs the
+  real CHIRP code: CSV import -> image -> the C decoder, download/upload against a fake radio, and the guard that
+  keeps the table off the APRS record. Not yet tried on a real radio.
+- Next: step 3, the card on the main screen.
+
 ## Risks and open points
 
 - **Capacity:** 256 repeaters per bank (channels 1-256 only); channels above that show the stock screen. Enough only if a bank is a region, not the
