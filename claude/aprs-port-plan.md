@@ -327,6 +327,9 @@ with `APRS_RxAdcAcquire/Release` (the tick is delayed, not lost). PA4 is held at
 (`app.c`). The menu item **APRS** now works (OFF/ON, saved, starts/stops the receiver live);
 **DStat** shows `HRD n` and rotates last heard / mean ISR µs / max ISR µs. Each decoded frame beeps.
 RAM: 12.9 KiB of 16 (demodulator ~1.3 KB, queue 0.7 KB).
+Bench note (user, 2026-10-07): with APRS on the VFO B line is still shown; at step 7 replace it with the
+ta1js panel (last heard + HRD/RPT/DUP/DRP counters, `UI_DisplayAPRSPanel`), and force the two-row layout
+while APRS is on. Also force RxMode to MAIN ONLY while APRS is on (step 5/7).
 Known gaps: sleep mode (SetOff) is not yet disabled while APRS runs; squelch/AF behaviour unverified.
 
 ## Open items
