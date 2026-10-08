@@ -472,6 +472,16 @@ The backlight may time out. With it off, the first key press (any key but PTT) o
 see that press, nor its repeats or release. Upstream did this for EXIT only. APRS build only
 (`ProcessKey` in `app/app.c`). A message box is dismissed by the second press, so the first one lets you read it.
 
+## Field-test image (2026-10-08)
+
+`claude/release/f4hwn.aprs.bin` (kept in git; identical to `build/APRS/f4hwn.aprs.bin` when written).
+Source commit `7be89abc` (branch `aprs`), 108824 bytes, flash 106.27 KiB, RAM 14.06 KiB.
+SHA-256 `f5cc5663e81075bc6e31eb67ef08a2d89e27f8850a9cd838a1615b5e560f92a5`.
+Check any image with `shasum -a 256 <file>`. Contains: receive, transmit, beacon, messages, digipeater, panel and
+packet box, serial commands, backlight wake, digi rate cap, red TX LED. User's calibration backup:
+`~/Downloads/UV-K5-V3_calibration.dat`, 512 bytes, SHA-256
+`6c115906256a778ba6ee54ea6fed8113bf83498edb1d8459c09087d047b63909`.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow
