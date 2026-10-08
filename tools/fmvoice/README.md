@@ -38,3 +38,16 @@ radio's own C decoder, and runs the download and upload against a fake radio. It
         venv/bin/python -m pytest tools/fmvoice/test_chirp_driver.py
 
 Without them those tests are skipped.
+
+## CHIRP from the command line
+
+`chirp_cli.py` builds the driver on the fly and runs CHIRP's `chirpc` with it loaded (needs a clone of
+kk7ds/chirp as `CHIRP_SRC`, its Python dependencies, and armel's driver as `FMV_UPSTREAM_DRIVER`):
+
+    python3 chirp_cli.py csv2img repeaters.csv fmvoice.img            # RepeaterBook CSV -> radio image, no radio
+    python3 chirp_cli.py --mmap fmvoice.img -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --list-mem
+    python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --download-mmap radio.img
+    python3 chirp_cli.py -s /dev/cu.usbserial-XXXX -r Quansheng_UV-K1_\&_UV-K5_V3_F4HWN_FM_Voice --upload-mmap fmvoice.img
+
+`csv2img` prints what the driver objects to (text over 45 characters, power levels the radio lacks). Upload
+overwrites the radio's channels (and settings stored in the image): download first and keep a copy.
