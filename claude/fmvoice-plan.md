@@ -134,6 +134,15 @@ APRS build are reused. APRS code is not compiled in.
 - Step 5b (quick save with band-plan offsets and a name editor) is **not done**: the stock MEM-CH / name menus
   already save a channel, and a third key action would need a new action id. Decision pending with the user.
 - Test image: `claude/release/f4hwn.fmvoice.bin` (checksum in `claude/release/SHA256SUMS`).
+- Added after the first bench use (2026-10-08): card in the big font (name under the frequency, place text below, step
+  size removed, tone value moved beside the tone marks); bank names from a CSV `Scanlist`/`Bank` column; `chirp_cli.py
+  upload-csv` (backup, convert, confirm, upload); band policy changed to receive everywhere / transmit on 2 m, 70 cm,
+  FRS/GMRS, MURS (`app/fmv_bands.c`). Bench: BANK key works (confirmed by the user); channel list `FMV_Ship.csv` (123
+  channels, banks WX FRS GMR MUR REP) uploaded over USB serial with a backup taken first.
+- Step 6 done: `claude/fmvoice-card.html` (radio card) and `tools/fmvoice/README.md`.
+- Still open: bench list (tone search on a real repeater, scanning inside a bank, weak-signal tone detection, scan speed,
+  CHIRP round trip with the FM Voice driver in the GUI); a permanent bank tag on the main screen (offered, not built);
+  start-in-ALL or remembered bank (offered); quick save with band-plan offsets and a name editor (deferred by the user).
 
 ## Risks and open points
 

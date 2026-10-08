@@ -1,0 +1,183 @@
+<title>UV-K5 V3 FM Voice Radio Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: an equipment reference card - two printed sides, numbered procedures
+   in a single column, key presses drawn as keycaps, menu numbers as tags. */
+:root {
+  /* one light palette on purpose: this card is printed on white paper */
+  --paper: #ffffff;
+  --ink: #111111;
+  --muted: #333333;
+  --rule: #a6a6a6;
+  --accent: #0b3a82;      /* dark blue headings; prints as near-black in mono */
+  --tag-bg: #ececec;
+  --key-bg: #ffffff;
+  --field: #555555;
+  color-scheme: light;
+
+  --f-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --s-1: 0.25rem; --s-2: 0.5rem; --s-3: 0.75rem; --s-4: 1rem; --s-5: 1.5rem; --s-6: 2rem;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 0.95rem/1.5 var(--f-body);
+  padding-inline: 16px;
+  padding-block: var(--s-5);
+}
+.card { max-width: 46rem; margin-inline: auto; display: grid; gap: var(--s-5); }
+
+/* sections */
+section { display: grid; gap: var(--s-3); break-inside: avoid; }
+h2 {
+  margin: 0; display: flex; align-items: baseline; gap: var(--s-2);
+  font: 700 1.35rem/1.1 var(--f-display); text-transform: uppercase; letter-spacing: 0.02em;
+  color: var(--accent); border-bottom: 1px solid var(--rule); padding-bottom: var(--s-1);
+}
+h2 .n { font: 600 0.85rem/1 var(--f-mono); color: var(--ink); background: var(--tag-bg); padding: 0.2rem 0.4rem; border-radius: 3px; }
+h3 { margin: 0; font: 700 1rem/1.2 var(--f-display); text-transform: uppercase; letter-spacing: 0.04em; }
+p { margin: 0; }
+.note { color: var(--muted); font-size: 0.88rem; }
+.note strong { color: var(--ink); }
+
+/* keycaps and menu tags */
+kbd {
+  font: 600 0.75rem/1 var(--f-mono); display: inline-block; padding: 0.18rem 0.38rem 0.14rem;
+  background: var(--key-bg); border: 1px solid var(--ink); border-bottom-width: 2px; border-radius: 4px;
+  white-space: nowrap;
+}
+.m { font: 600 0.78rem/1 var(--f-mono); background: var(--tag-bg); color: var(--ink); padding: 0.16rem 0.32rem; border-radius: 3px; white-space: nowrap; }
+.v { font: 600 0.8rem/1 var(--f-mono); white-space: nowrap; }
+code { font: 500 0.8rem/1 var(--f-mono); }
+
+/* steps */
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: st; display: grid; gap: var(--s-2); }
+ol.steps > li { counter-increment: st; display: grid; grid-template-columns: 1.6rem 1fr; gap: var(--s-2); }
+ol.steps > li::before {
+  content: counter(st); font: 700 1rem/1.35 var(--f-display); color: var(--accent); text-align: right;
+}
+ol.steps > li > div { min-width: 0; }
+
+/* tables */
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+th, td { text-align: left; padding: 0.3rem 0.5rem 0.3rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 600 0.68rem/1.2 var(--f-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+td.blank { min-width: 6rem; }
+td.blank span { display: block; height: 1.1rem; border-bottom: 1px solid var(--field); }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: var(--s-4); }
+.cols > * { min-width: 0; }
+.box { border: 1px solid var(--rule); border-radius: 4px; padding: var(--s-3); display: grid; gap: var(--s-2); }
+.screen {
+  font: 600 0.82rem/1.3 var(--f-mono); background: var(--key-bg); border: 1px solid var(--ink);
+  border-radius: 3px; padding: 0.3rem 0.5rem; display: inline-block; white-space: nowrap;
+}
+.page-break { display: none; }
+footer { border-top: 1px solid var(--rule); padding-top: var(--s-2); color: var(--muted); font-size: 0.75rem; }
+
+@media print {
+  @page { size: auto; margin: 11mm 12mm; }
+  body { padding: 0; font-size: 9.2pt; }
+  .card { max-width: none; gap: 9pt; }
+  .page-break { display: block; break-before: page; height: 0; }
+  section { gap: 5pt; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="card">
+
+  <section>
+    <h2>The screen</h2>
+    <div class="cols">
+      <div class="box">
+        <p><span class="screen">162.550</span> the frequency, big, at the top. The tone mark and tone value sit just under it.</p>
+        <p><span class="screen">KD2ABC</span> the channel name (the callsign), big, under the frequency.</p>
+        <p><span class="screen">Mechanicsburg</span> the city, then the landmark: the channel's place text, big, scrolling if it is long.</p>
+        <p class="note">The place text hides while a signal is received (the signal bar takes its row); the name stays. A channel with no place text shows only the name. The name shows only if the channel display mode (menu) is <strong>Frequency</strong>; the other modes print it themselves.</p>
+      </div>
+      <div class="box">
+        <h3>Banks (scan lists)</h3>
+        <p>A bank is a scan list. <kbd>▲</kbd> <kbd>▼</kbd> step through the <strong>channels of the active bank only</strong>. <span class="v">ALL</span> shows every channel.</p>
+        <p class="note">Banks in the default file: <span class="v">WX</span> weather, <span class="v">FRS</span>, <span class="v">GMR</span> GMRS, <span class="v">MUR</span> MURS, <span class="v">REP</span> repeaters. The radio cycles through banks that have channels, then <span class="v">MIX</span> and <span class="v">ALL</span>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Two key actions</h2>
+    <p>Assign them in the menu's key settings (F1 / F2 / M, short or long press): <span class="m">BANK</span> and <span class="m">TONE SEARCH</span>.</p>
+    <div class="cols">
+      <div class="box">
+        <h3>BANK</h3>
+        <ol class="steps">
+          <li><div>Press the key. The radio moves to the next bank and shows its name (for example <span class="screen">BANK REP</span>) for about 1.5 seconds.</div></li>
+          <li><div>It lands on the channel you last left that bank on (kept until the radio is switched off).</div></li>
+          <li><div>While <strong>scanning</strong>, it only changes the bank being scanned.</div></li>
+        </ol>
+      </div>
+      <div class="box">
+        <h3>TONE SEARCH</h3>
+        <ol class="steps">
+          <li><div>Select the repeater's channel and wait for it to be transmitting.</div></li>
+          <li><div>Press the key: <span class="screen">SEARCHING PL</span>. It listens for up to about 16 seconds.</div></li>
+          <li><div>Found: <span class="screen">TX PL 100.0</span> (or <span class="screen">TX DCS 023</span>). That becomes the channel's <strong>transmit</strong> tone and is saved. The receive tone is not touched.</div></li>
+          <li><div>Nothing: <span class="screen">NO TONE FOUND</span>. Any key, or <kbd>PTT</kbd>, stops the search.</div></li>
+        </ol>
+        <p class="note">It needs a steady carrier for a second or two. A short kerchunk will not be identified.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where this radio may transmit</h2>
+    <p>It <strong>receives</strong> everywhere the radio can. It <strong>transmits</strong> only on these, and nothing in the menu or on a channel lifts that:</p>
+    <div class="tbl"><table>
+      <tr><th>Service</th><th>Frequencies (MHz)</th></tr>
+      <tr><td>2 m</td><td>144.000 - 148.000</td></tr>
+      <tr><td>70 cm</td><td>420.000 - 450.000</td></tr>
+      <tr><td>FRS / GMRS</td><td>462.550 - 462.725 and 467.550 - 467.725</td></tr>
+      <tr><td>MURS</td><td>151.820, 151.880, 151.940, 154.570, 154.600</td></tr>
+      <tr><td>Weather and everything else</td><td>receive only</td></tr>
+    </table></div>
+    <p class="note">What you may use, and with what equipment, is your responsibility. Business-band and other services are not in the list.</p>
+  </section>
+
+  <div class="page-break"></div>
+
+  <section>
+    <h2>Loading channels (computer)</h2>
+    <ol class="steps">
+      <li><div>Make a CSV (RepeaterBook export in CHIRP format works). <strong>Name</strong> is the callsign, <strong>Comment</strong> is the place text (<span class="v">City, Landmark</span>, up to 45 characters; longer is cut). Add a column <strong>Scanlist</strong> (or <strong>Bank</strong>): empty = no bank, <span class="v">ALL</span>, a number 1-24, or a bank name (3 characters shown; a new name takes the first unnamed list).</div></li>
+      <li><div>Close CHIRP and any web programmer (only one program can hold the serial port). Radio on, normal mode, cable in.</div></li>
+      <li><div><code>python3 tools/fmvoice/chirp_cli.py upload-csv FILE.csv --port /dev/cu.usbserial-XXXX</code></div></li>
+      <li><div>It downloads the radio and keeps it as <code>fmvoice-backup-&lt;time&gt;.img</code>, puts the CSV on top (channels by Location; ones the CSV does not mention stay), asks for <span class="v">yes</span>, uploads. Restart the radio.</div></li>
+    </ol>
+    <p class="note">In the CHIRP app instead: Help &rarr; Developer Mode &rarr; File &rarr; Load Module (the FM Voice driver), choose <em>Quansheng UV-K1 &amp; UV-K5 V3 (F4HWN FM Voice)</em>. The stock driver would drop the place text. Restore a backup with <code>--upload-mmap</code> (see tools/fmvoice/README.md).</p>
+  </section>
+
+  <section>
+    <h2>Saving a channel on the radio</h2>
+    <p>Use the stock menu (MEM-CH to save the current frequency, MEM-NAME for the name, offset and tone items for the rest). The place text can only be set from the computer. TONE SEARCH sets the transmit tone.</p>
+  </section>
+
+  <section>
+    <h2>Good to know</h2>
+    <ul>
+      <li>Place text is kept for channels 1-256 only.</li>
+      <li>A change made to a channel by anything but the FM Voice driver (the stock driver, another firmware) hides its place text until it is uploaded again from the CSV.</li>
+      <li>A settings reset erases the channels and their place text. Keep the backup image.</li>
+      <li>No dual watch and no second VFO in this build.</li>
+      <li>This image keeps its own configuration in its multiboot slot; the APRS and Fusion slots are separate.</li>
+    </ul>
+  </section>
+
+  <footer>FM Voice build (KD2DCM-VOICE) &middot; image <code>claude/release/f4hwn.fmvoice.bin</code> &middot; checksum in <code>claude/release/SHA256SUMS</code></footer>
+</div>
