@@ -3,6 +3,8 @@
 Audience: the author of a program that sends batches of short APRS messages through a radio running this firmware
 (branch `aprs`, `f4hwn.aprs.bin`), connected to the computer by the USB-C cable or the 2-pin K-plug programming cable.
 
+Revision 2026-10-11: message text is 1 to 67 characters (was 30); over 67 is refused. Details in section 5.1.
+
 Status: written from the firmware source (`App/app/aprs_cmd.c`, `aprs_station.c`, `aprs_serial.c`, `aprs_rxinfo.c`,
 `aprs_msg.c`) and the working reference client `tools/aprs/aprs_pc.py` (host-tested in `tools/aprs/test_aprs_pc.py`). The
 byte layouts below are pinned by those tests. **Not yet exercised on a radio by a batching client**: the pacing and
@@ -73,6 +75,9 @@ msg  N0CALL-7 "hello from the ridge"   (payload 48 bytes, 44 bytes of data)
 unobfuscated payload 00 07 2c 00 | 44 33 22 11 | "N0CALL-7" 00 00 | "hello from the ridge" 00 x10
 ```
 
+The example pads the text to 30 bytes, as the reference client does. Current firmware does not need the padding (data length
+is `14 + text length`, up to `14 + 67 = 81`); firmware from before the 67-character change does (section 5.1).
+
 ## 4. Session handshake (once per port, before any command that changes anything)
 
 Command `0x0514`, data = `ts u32`: a random **non-zero** 32-bit number you choose. The radio latches `ts` for this port.
@@ -97,7 +102,7 @@ Standard reply ("ack"): payload `id+1 u16`, `len u16 = 4`, `Ok u8`, 3 padding by
 | 14 | 1..67 | message text: **the rest of the data**, 1 to 67 bytes. A NUL byte ends the text early. |
 
 Data length is `14 + n`, where `n` (1 to 67) is the number of text bytes; there is no padding requirement. Reply `Ok = 1` means **queued**. `Ok = 0` means any of: wrong or missing `ts`; empty destination;
-empty text; more than 67 text bytes. More than 67 text bytes is **refused**, not cut. (It does *not* check callsign, APRS on, or band: those drop the message later, silently.)
+empty text; more than 67 text bytes (refused, never cut). (It does *not* check callsign, APRS on, or band: those drop the message later, silently.)
 
 On the air the packet is `:` + destination padded with spaces to 9 characters + `:` + text + `{nn`, where `nn` is a line
 number 01-99. The radio picks `nn`; it counts up by one for each message (99 wraps to 01) and **every `0x0700` gets a new
