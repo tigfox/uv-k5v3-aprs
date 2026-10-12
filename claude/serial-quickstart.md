@@ -65,15 +65,18 @@ affected by this: the radio sends these lines only to a program that asks for th
 
 ```
 python3 aprs_pc.py PORT msg N0CALL-7 "hello from the ridge"   # an APRS message (up to 67 characters)
+python3 aprs_pc.py PORT caps                                    # what this firmware can do (queue depth, features)
 python3 aprs_pc.py PORT beacon                                  # beacon now
 python3 aprs_pc.py PORT on        # or: off
 python3 aprs_pc.py PORT digi      # digipeater settings and counters
 python3 aprs_pc.py PORT digi set WIDE 2 500ms DIGI
 ```
 
-A message or beacon is **queued**: the radio sends it within about half a second once the channel is quiet,
-and not more often than every 5 seconds. It needs a real callsign set, and the main VFO inside 144-148 or
-420-450 MHz. A message is acknowledged by the other station; `monitor` shows the ack arriving.
+A message or beacon is **queued**: the radio sends it within about half a second once the channel is quiet, and not more often
+than every 5 seconds. Up to **4 messages** can wait; a fifth is refused with the reason. The reply gives the line number the
+message will go out with, and with `monitor` running you see `sent ...` when it has gone out, or `dropped ... <reason>` when the
+radio gave it up (`battery`, `band`, `nocall`, `aprsoff`, `busy`). It needs a real callsign set, APRS on, and the main VFO inside
+144-148 or 420-450 MHz. A message is acknowledged by the other station; `monitor` shows the ack arriving.
 
 ## 6. If something does not work
 
@@ -81,7 +84,9 @@ and not more often than every 5 seconds. It needs a real callsign set, and the m
 |---|---|
 | `no answer from the radio` | wrong port; radio off; another program has the port |
 | `the radio refused it` | no real callsign set; wrong session (just retry); APRS command while the radio is busy |
-| `not queued` (msg) | empty text or destination, or no callsign |
+| `not queued: full` (msg) | 4 messages are already waiting: wait for a `sent` line |
+| `not queued: ...` (msg) | the reason is printed: `session`, `empty`, `toolong` |
+| `dropped ... battery` / `band` / `nocall` / `aprsoff` | the radio would not transmit: fix that, send again |
 | a settings file error | the message names the item; fix the file |
 | `monitor` shows `NOTX` | transmit refused: frequency outside the bands, or low battery |
 | `monitor` shows `DROP` or `BUSY` | the channel stayed busy for 5 s, or the unattended cap was reached (20 repeats a minute) |

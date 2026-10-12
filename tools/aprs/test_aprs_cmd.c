@@ -6,6 +6,7 @@
 #include "app/aprs_cmd.h"
 #include "app/aprs_digi.h"
 #include "app/aprs_msg.h"
+#include "app/aprs_station.h"
 
 static int fails, checks;
 #define CHECK(c) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); } } while (0)
@@ -20,11 +21,15 @@ static uint8_t raw_copy[160];
 static uint16_t raw_len;
 
 static bool st_set_on(bool on) { on_state = on; cur.aprs_on = on; return true; }
-static bool st_queue_message(const char *to, const char *text)
+static aprs_reason_t q_reason;          /* what the stub queue answers: OK, or FULL ... */
+static uint8_t q_seq, q_free;
+static aprs_reason_t st_queue_message(const char *to, const char *text, uint8_t *seq)
 {
-    if (!to[0] || !text[0]) return false;
-    strcpy(q_to, to); strcpy(q_text, text); return true;
+    if (q_reason != APRS_R_OK) return q_reason;
+    if (!to[0] || !text[0]) return APRS_R_EMPTY;
+    strcpy(q_to, to); strcpy(q_text, text); *seq = ++q_seq; return APRS_R_OK;
 }
+static uint8_t st_queue_free(void) { return q_free; }
 static void st_queue_beacon(void) { beacons++; }
 static bool st_queue_raw(const uint8_t *f, uint16_t n)
 {
@@ -37,7 +42,7 @@ static void st_stats(uint16_t st[6], uint32_t *up) { for (int i = 0; i < 6; i++)
 static void st_monitor(uint32_t p, bool on) { monitor_port = p; monitor_on = on; monitor_calls++; }
 
 static const aprs_cmd_ops_t ops = { st_set_on, st_queue_message, st_queue_beacon, st_queue_raw, st_apply, st_get,
-                                    st_stats, st_monitor };
+                                    st_stats, st_monitor, st_queue_free };
 
 #define TS 0xA1B2C3D4u
 static uint8_t reply[APRS_CMD_REPLY_MAX];
@@ -49,6 +54,7 @@ static void reset(void)
     memset(q_to, 0, sizeof q_to); memset(q_text, 0, sizeof q_text);
     beacons = applied = raw_queued = monitor_calls = 0;
     on_state = monitor_on = raw_busy = apply_fails = false;
+    q_reason = APRS_R_OK; q_seq = 0; q_free = 3;
     raw_len = 0;
 }
 
@@ -61,6 +67,17 @@ static uint16_t run(uint16_t id, const uint8_t *d, uint16_t n, uint32_t ts)
 static uint16_t rid(void) { return (uint16_t)(reply[0] | (reply[1] << 8)); }
 static uint16_t rsize(void) { return (uint16_t)(reply[2] | (reply[3] << 8)); }
 
+static void test_capabilities(void)
+{
+    reset();
+    CHECK(run(0x0712, NULL, 0, 0) == 4 + 12 && rid() == 0x0713 && rsize() == 12);      /* no session needed */
+    CHECK(reply[4] == 1 && reply[5] == APRS_PROTOCOL_REVISION && reply[6] == 0 && reply[7] == 0);
+    const uint32_t features = (uint32_t)reply[8] | ((uint32_t)reply[9] << 8) | ((uint32_t)reply[10] << 16) | ((uint32_t)reply[11] << 24);
+    CHECK(features == APRS_CAPS_FEATURES && (features & APRS_CAP_SEND_FIELDS) && (features & APRS_CAP_EVENTS));
+    CHECK((features & APRS_CAP_ACKQ) && (features & APRS_CAP_QUEUE));
+    CHECK(reply[12] == APRS_MSGQ_DEPTH && reply[13] == APRS_ACKQ_DEPTH && reply[14] == APRS_MSG_TEXT_MAX && reply[15] == 0);
+}
+
 static void test_msg_beacon_on(void)
 {
     reset();
@@ -69,15 +86,25 @@ static void test_msg_beacon_on(void)
     put32(d, TS);
     strcpy((char *)d + 4, "N0CALL-7"); strcpy((char *)d + 14, "hello from the pc");
     CHECK(run(0x0700, d, 44, TS) == 8 && rid() == 0x0701 && rsize() == 4 && reply[4] == 1);
+    CHECK(reply[5] == 1 && reply[6] == 3 && reply[7] == APRS_R_OK);              /* line number, free places, no reason */
     CHECK(strcmp(q_to, "N0CALL-7") == 0 && strcmp(q_text, "hello from the pc") == 0);
+    CHECK(run(0x0700, d, 44, TS) == 8 && reply[4] == 1 && reply[5] == 2);        /* the next message, the next number */
     reset();
     CHECK(run(0x0700, d, 44, TS + 1) == 8 && reply[4] == 0 && q_to[0] == 0);     /* wrong session */
-    CHECK(run(0x0700, d, 44, 0) == 8 && reply[4] == 0);                          /* no session at all */
-    CHECK(run(0x0700, d, 13, TS) == 8 && reply[4] == 0);                         /* too short for a destination and text */
+    CHECK(reply[5] == 0 && reply[6] == 3 && reply[7] == APRS_R_SESSION);
+    CHECK(run(0x0700, d, 44, 0) == 8 && reply[4] == 0 && reply[7] == APRS_R_SESSION);   /* no session at all */
+    CHECK(run(0x0700, d, 13, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_EMPTY);    /* too short for a destination and text */
+    CHECK(run(0x0700, d, 14, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_EMPTY);    /* no text at all */
     CHECK(run(0x0700, d, 43, TS) == 8 && reply[4] == 1);                         /* a 29-character text is fine */
     reset();
     memset(d + 14, 0, 30);
-    CHECK(run(0x0700, d, 44, TS) == 8 && reply[4] == 0);                         /* empty text */
+    CHECK(run(0x0700, d, 44, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_EMPTY);    /* empty text */
+    reset();
+    q_reason = APRS_R_FULL; q_free = 0;                                           /* queue full: refused with the reason */
+    memset(d + 14, 'x', 5);
+    CHECK(run(0x0700, d, 44, TS) == 8 && reply[4] == 0 && reply[5] == 0 && reply[6] == 0 && reply[7] == APRS_R_FULL);
+    CHECK(q_to[0] == 0);
+    reset();
 
     {   /* the text is whatever follows the destination, up to 67 characters (a 30-byte field from older hosts still works) */
         uint8_t big[4 + 10 + 80];
@@ -89,6 +116,7 @@ static void test_msg_beacon_on(void)
         CHECK(run(0x0700, big, 4 + 10 + 67, TS) == 8 && reply[4] == 1 && strlen(q_text) == 67 && q_text[66] == 'x');
         reset();
         CHECK(run(0x0700, big, 4 + 10 + 68, TS) == 8 && reply[4] == 0 && q_to[0] == 0);   /* over 67: refused, never cut */
+        CHECK(reply[7] == APRS_R_TOOLONG);
         reset();
         memset(big + 14, 0, 70);
         big[14] = 'o'; big[15] = 'k';
@@ -236,7 +264,7 @@ static void test_monitor_and_unknown(void)
 
 int main(void)
 {
-    test_msg_beacon_on(); test_raw(); test_digi(); test_setup(); test_monitor_and_unknown();
+    test_capabilities(); test_msg_beacon_on(); test_raw(); test_digi(); test_setup(); test_monitor_and_unknown();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;
 }

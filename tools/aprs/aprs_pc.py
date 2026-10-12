@@ -3,6 +3,7 @@
 
   aprs_pc.py <port> status                    version, APRS settings, digipeater counters
   aprs_pc.py <port> msg <TO> <text...>        queue an APRS message (up to 67 characters)
+  aprs_pc.py <port> caps                      what this firmware can do (revision, features, queue depth, longest text)
   aprs_pc.py <port> beacon                    queue the station beacon
   aprs_pc.py <port> on | off                  switch APRS on or off
   aprs_pc.py <port> raw <hex>                 transmit a raw AX.25 frame (no FCS); the source must be our callsign
@@ -340,6 +341,27 @@ def get_settings(ser) -> Settings:
     return unpack_record(bytes(r[8:8 + RECORD_SIZE]))
 
 
+# why a message was refused or given up: the same numbers as app/aprs_reason.h (the byte after the free places in the reply)
+REASONS = ("", "full", "session", "empty", "toolong", "busy", "nocall", "aprsoff", "band", "battery", "mode", "replaced",
+           "off")
+REASON_HELP = {"full": "the radio's queue is full: wait for a SENT line, then send again",
+               "session": "the radio did not accept this session: open a new one",
+               "empty": "no destination or no text", "toolong": "more than 67 characters"}
+FEATURES = ("send-fields", "events", "acks", "queue")      # bits 0-3 of the capabilities reply
+
+
+def open_port(port, serial_module):
+    """The port at 38400 with DTR and RTS low from the start: an AIOC keys the radio's PTT from those lines."""
+    ser = serial_module.Serial()
+    ser.port = port
+    ser.baudrate = 38400
+    ser.timeout = 1.0
+    ser.dtr = False
+    ser.rts = False
+    ser.open()
+    return ser
+
+
 MSG_TEXT_MAX = 67        # the APRS limit; firmware before that change accepted 30 and cut the rest
 MSG_TEXT_MIN_FIELD = 30  # a shorter text is still sent in a 30-byte padded field: older firmware needs it
 
@@ -351,11 +373,37 @@ def cmd_msg(ser, ts, dest, text):
         print(f"not sent: the text is {len(text_b)} bytes, the limit is {MSG_TEXT_MAX}")
         return 1
     send_cmd(ser, 0x0700, struct.pack("<I", ts) + dest_b + text_b.ljust(MSG_TEXT_MIN_FIELD, b"\x00"))
-    if ack_ok(read_reply(ser), 0x0701):
-        print(f"queued: {dest.upper()} <- {text}")
+    r = read_reply(ser)
+    if ack_ok(r, 0x0701):
+        # newer firmware also gives the line number and the free places in the queue; older firmware has padding there
+        extra = f" (line {r[5]:02d}, {r[6]} free)" if len(r) >= 8 and r[5] else ""
+        print(f"queued: {dest.upper()} <- {text}{extra}")
         return 0
-    print("not queued (callsign set? APRS on? destination and text given?)")
+    why = REASONS[r[7]] if r is not None and len(r) >= 8 and 0 < r[7] < len(REASONS) else ""
+    if why:
+        print(f"not queued: {why}" + (f" ({REASON_HELP[why]})" if why in REASON_HELP else ""))
+    else:
+        print("not queued (callsign set? APRS on? destination and text given?)")
     return 1
+
+
+def parse_caps(r):
+    """(revision, feature bits, queue depth, ack depth, longest text) from a 0x0713 reply, or None."""
+    if r is None or len(r) < 16 or struct.unpack_from("<H", r)[0] != 0x0713 or r[4] != 1:
+        return None
+    return r[5], struct.unpack_from("<I", r, 8)[0], r[12], r[13], r[14]
+
+
+def cmd_caps(ser):
+    send_cmd(ser, 0x0712)
+    caps = parse_caps(read_reply(ser))
+    if caps is None:
+        print("revision 0 (no capabilities command: an older firmware; only the basic message command)")
+        return 1
+    revision, bits, queue, acks, text = caps
+    names = ", ".join(n for i, n in enumerate(FEATURES) if bits >> i & 1) or "none"
+    print(f"revision {revision}; features: {names}; queue {queue}, acks {acks}, text up to {text} characters")
+    return 0
 
 
 def cmd_simple(ser, ts, cmd_id, label, extra=b""):
@@ -460,6 +508,10 @@ def monitor_line(line: bytes):
         return "    raw " + line[8:].decode(errors="replace")
     if line.startswith(b"DIGI:"):
         return "    digi " + line[5:].decode(errors="replace")
+    if line.startswith(b"SENT:"):
+        return "sent " + line[5:].decode(errors="replace")
+    if line.startswith(b"DROP:"):
+        return "dropped " + line[5:].decode(errors="replace")
     return None
 
 
@@ -496,13 +548,15 @@ def main(argv=None):
     import serial  # here, so the protocol helpers import without pyserial (tests)
 
     port, cmd, rest = argv[0], argv[1], argv[2:]
-    ser = serial.Serial(port, 38400, timeout=1.0)
+    ser = open_port(port, serial)
     ts, version = open_session(ser)
     if ts is None:
         print("no answer from the radio (right port? radio on, not in a menu that blocks?)")
         return 1
     if cmd == "status":
         return cmd_status(ser, version)
+    if cmd == "caps":
+        return cmd_caps(ser)
     if cmd == "msg" and len(rest) >= 2:
         return cmd_msg(ser, ts, rest[0], " ".join(rest[1:]))
     if cmd == "beacon":

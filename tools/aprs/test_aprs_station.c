@@ -1,15 +1,27 @@
 /* Host test for App/app/aprs_rxinfo.c and App/app/aprs_station.c: what the station does with received
  * frames, and what it decides to send. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "app/aprs_ax25.h"
 #include "app/aprs_beacon.h"
+#include "app/aprs_reason.h"
 #include "app/aprs_station.h"
 
 static int fails, checks;
 #define CHECK(c) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); } } while (0)
 #define CHECK_STR(got, want) do { checks++; if (strcmp((got), (want))) { fails++; \
     printf("FAIL %s:%d: got '%s' want '%s'\n", __FILE__, __LINE__, (got), (want)); } } while (0)
+
+/* the events the station reports, as the monitor lines they become */
+static char evlog[16][APRS_EVENT_LINE_MAX];
+static unsigned evn;
+static void sink(const aprs_event_t *e)
+{
+    if (evn < 16u)
+        APRS_EventLine(e, evlog[evn++], APRS_EVENT_LINE_MAX);
+}
+static void ev_reset(void) { evn = 0; }
 
 static aprs_settings_t me(void)
 {
@@ -145,7 +157,7 @@ static void test_beacon_timer(void)
     n = APRS_StationBuild(&st, &s, APRS_ACT_BEACON, f);
     CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1:>Ridge digi");
     /* a request that cannot be built is dropped and the timer re-armed for the next interval */
-    APRS_StationDrop(&st, &s, APRS_ACT_BEACON);
+    APRS_StationDrop(&st, &s, APRS_ACT_BEACON, APRS_R_OK);
     CHECK(!st.beacon_pending && st.beacon_countdown == 1200 && st.sent_beacons == 0);
 }
 
@@ -176,10 +188,13 @@ static void test_limits(void)
     unsigned n = 0;
     while (APRS_StationTick(&st) == APRS_ACT_BEACON && n < 1000) n++;   // never sent: the channel is busy
     CHECK(n == APRS_PENDING_MAX_SLOTS && !st.beacon_pending);
+    CHECK(st.beacon_countdown == 1200);                               /* given up, but the next automatic beacon is still due */
     APRS_StationQueueBeacon(&st);
-    st.ack_pending = true; st.msg_pending = true;
+    uint8_t seq;
+    CHECK(APRS_StationQueueAck(&st, "K1ABC", "7") == APRS_R_OK);
+    CHECK(APRS_StationEnqueue(&st, "K1ABC", "hi", true, &seq) == APRS_R_OK);
     APRS_StationClearPending(&st);
-    CHECK(APRS_StationTick(&st) == APRS_ACT_NONE && !st.beacon_pending && !st.ack_pending && !st.msg_pending);
+    CHECK(APRS_StationTick(&st) == APRS_ACT_NONE && !st.beacon_pending && st.a_count == 0 && st.q_count == 0);
 }
 
 static void test_raw(void)
@@ -208,7 +223,7 @@ static void test_raw(void)
     APRS_StationClearPending(&st);                                      /* APRS off forgets it */
     CHECK(st.raw_len == 0 && APRS_StationTick(&st) == APRS_ACT_NONE);
     CHECK(APRS_StationQueueRaw(&st, f, n));
-    APRS_StationDrop(&st, &s, APRS_ACT_RAW);                            /* refused by the radio */
+    APRS_StationDrop(&st, &s, APRS_ACT_RAW, APRS_R_BAND);               /* refused by the radio */
     CHECK(st.raw_len == 0);
 }
 
@@ -228,7 +243,7 @@ static void test_messages(void)
     uint16_t n = APRS_StationBuild(&st, &s, APRS_ACT_MSG, g);
     CHECK_STR(tnc2(g, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1::K1ABC    :hello{01");
     APRS_StationSent(&st, &s, APRS_ACT_MSG);
-    CHECK(st.seq == 1 && !st.msg_pending && !st.dirty);
+    CHECK(st.seq == 1 && st.q_count == 0 && !st.dirty);
     CHECK(APRS_StationQueueMessage(&st));                       /* the same text again: a retry */
     n = APRS_StationBuild(&st, &s, APRS_ACT_MSG, g);
     CHECK(strstr(tnc2(g, n), "hello{01") != NULL);
@@ -266,12 +281,12 @@ static void test_messages(void)
     APRS_StationSetMsgTo(&st, "K1ABC");
     len = with_fcs(f, APRS_BuildAck(f, &o, "W1ABC-7", "2"));
     CHECK(APRS_StationOnFrame(&st, &s, f, len, &info) && info.is_ack);
-    CHECK(!st.ack_pending && strcmp(st.msgto, "K1ABC") == 0);
+    CHECK(st.a_count == 0 && strcmp(st.msgto, "K1ABC") == 0);
     CHECK_STR(st.last_msg, "N0CALL-3>ack2");
 
     /* a message without a line number needs no ack */
     len = with_fcs(f, APRS_BuildMessage(f, &o, "W1ABC-7", "no number", 0));
-    CHECK(APRS_StationOnFrame(&st, &s, f, len, &info) && !st.ack_pending);
+    CHECK(APRS_StationOnFrame(&st, &s, f, len, &info) && st.a_count == 0);
 
     /* our own transmission heard back is ignored entirely */
     len = with_fcs(f, APRS_BuildMessage(f, &s, "N0CALL-3", "echo", 5));
@@ -280,17 +295,185 @@ static void test_messages(void)
 
     /* a refused request is forgotten */
     APRS_StationQueueMessage(&st);
-    APRS_StationDrop(&st, &s, APRS_ACT_MSG);
-    CHECK(!st.msg_pending);
+    APRS_StationDrop(&st, &s, APRS_ACT_MSG, APRS_R_BAND);
+    CHECK(st.q_count == 0);
     /* message text longer than the limit is cut */
     char longtxt[100]; memset(longtxt, 'z', 99); longtxt[99] = 0;
     APRS_StationSetMsgText(&st, longtxt);
     CHECK(strlen(st.msg_text) == APRS_MSG_TEXT_MAX);
 }
 
+static void test_queue(void)
+{
+    aprs_settings_t s = me();
+    aprs_station_t st;
+    uint8_t f[APRS_BUILD_MAX + 4], seq = 0;
+    APRS_StationInit(&st, &s);
+    APRS_StationSetEventSink(sink);
+    ev_reset();
+
+    CHECK(APRS_StationMsgFree(&st) == APRS_MSGQ_DEPTH && APRS_MSGQ_DEPTH == 4);
+    CHECK(APRS_StationEnqueue(&st, "", "x", true, &seq) == APRS_R_EMPTY && seq == 0);
+    CHECK(APRS_StationEnqueue(&st, "K1ABC", "", true, &seq) == APRS_R_EMPTY);
+    for (uint8_t i = 1; i <= 4; i++) {
+        char text[8];
+        snprintf(text, sizeof text, "msg%u", i);
+        CHECK(APRS_StationEnqueue(&st, "K1ABC-7", text, true, &seq) == APRS_R_OK && seq == i);
+        CHECK(APRS_StationMsgFree(&st) == 4 - i);
+    }
+    seq = 77;
+    CHECK(APRS_StationEnqueue(&st, "K1ABC-7", "fifth", true, &seq) == APRS_R_FULL && seq == 77);   /* refused: nothing replaced */
+    CHECK(st.q_count == 4 && strcmp(st.q[st.q_head].text, "msg1") == 0);
+
+    /* first in, first out; each sent message reports SENT with its destination and line number */
+    for (uint8_t i = 1; i <= 4; i++) {
+        st.quiet = 0;
+        CHECK(APRS_StationTick(&st) == APRS_ACT_MSG);
+        const uint16_t n = APRS_StationBuild(&st, &s, APRS_ACT_MSG, f);
+        char want[16];
+        snprintf(want, sizeof want, "msg%u{0%u", i, i);
+        CHECK(n > 0 && strstr(tnc2(f, n), want) != NULL);
+        APRS_StationSent(&st, &s, APRS_ACT_MSG);
+    }
+    CHECK(st.q_count == 0 && st.sent_msgs == 4 && APRS_StationTick(&st) == APRS_ACT_NONE);
+    CHECK(evn == 4 && strcmp(evlog[0], "SENT:K1ABC-7{01}") == 0 && strcmp(evlog[3], "SENT:K1ABC-7{04}") == 0);
+
+    /* line numbers run 1-99 and wrap */
+    st.seq = 98;
+    CHECK(APRS_StationEnqueue(&st, "K1", "a", true, &seq) == APRS_R_OK && seq == 99);
+    CHECK(APRS_StationEnqueue(&st, "K1", "b", true, &seq) == APRS_R_OK && seq == 1);
+
+    /* the operator's composer: the same text again is a retry and keeps its number; a changed one takes a new number */
+    APRS_StationInit(&st, &s);
+    APRS_StationSetMsgTo(&st, "K1ABC"); APRS_StationSetMsgText(&st, "hello");
+    CHECK(APRS_StationQueueMessage(&st) && st.q[st.q_head].seq == 1);
+    CHECK(APRS_StationQueueMessage(&st) && st.q[(st.q_head + 1) % APRS_MSGQ_DEPTH].seq == 1);
+    APRS_StationSetMsgText(&st, "changed");
+    CHECK(APRS_StationQueueMessage(&st) && st.q[(st.q_head + 2) % APRS_MSGQ_DEPTH].seq == 2);
+    /* ... but a host message always takes a new number, even with the same text */
+    CHECK(APRS_StationEnqueue(&st, "K1ABC", "changed", true, &seq) == APRS_R_OK && seq == 3);
+    CHECK(!APRS_StationQueueMessage(&st));                        /* full: the menu's Send says no */
+    APRS_StationSetEventSink(sink);
+}
+
+static void test_drops(void)
+{
+    aprs_settings_t s = me();
+    aprs_station_t st;
+    uint8_t seq;
+    APRS_StationInit(&st, &s);
+    APRS_StationSetEventSink(sink);
+
+    /* the head is refused by the radio: it is dropped with the reason, the next one is tried */
+    ev_reset();
+    APRS_StationEnqueue(&st, "K1ABC", "one", true, &seq);
+    APRS_StationEnqueue(&st, "K2DEF", "two", true, &seq);
+    st.quiet = 0;
+    CHECK(APRS_StationTick(&st) == APRS_ACT_MSG);
+    APRS_StationDrop(&st, &s, APRS_ACT_MSG, APRS_R_BATTERY);
+    CHECK(evn == 1 && strcmp(evlog[0], "DROP:K1ABC{01} battery") == 0 && st.q_count == 1);
+    CHECK(strcmp(st.q[st.q_head].to, "K2DEF") == 0);
+
+    /* a channel that never clears: each queued message gets its own minute, then goes with `busy` */
+    APRS_StationInit(&st, &s);
+    ev_reset();
+    APRS_StationEnqueue(&st, "K1ABC", "one", true, &seq);
+    APRS_StationEnqueue(&st, "K2DEF", "two", true, &seq);
+    unsigned slots = 0;
+    while (evn < 1 && slots < 1000) { APRS_StationTick(&st); slots++; }
+    CHECK(slots == APRS_PENDING_MAX_SLOTS + 1 && strcmp(evlog[0], "DROP:K1ABC{01} busy") == 0 && st.q_count == 1);
+    slots = 0;
+    while (evn < 2 && slots < 1000) { APRS_StationTick(&st); slots++; }
+    CHECK(slots == APRS_PENDING_MAX_SLOTS + 1 && strcmp(evlog[1], "DROP:K2DEF{02} busy") == 0 && st.q_count == 0);
+
+    /* APRS switched off: everything waiting is reported as `off`, beacons and raw frames are just forgotten */
+    APRS_StationInit(&st, &s);
+    ev_reset();
+    APRS_StationEnqueue(&st, "K1ABC", "one", true, &seq);
+    APRS_StationEnqueue(&st, "K2DEF", "two", true, &seq);
+    APRS_StationQueueAck(&st, "N0CALL-3", "050");
+    APRS_StationQueueBeacon(&st);
+    APRS_StationClearPending(&st);
+    CHECK(evn == 3 && st.q_count == 0 && st.a_count == 0 && !st.beacon_pending);
+    CHECK(strcmp(evlog[0], "DROP:K1ABC{01} off") == 0 && strcmp(evlog[1], "DROP:K2DEF{02} off") == 0);
+    CHECK(strcmp(evlog[2], "DROP:ack N0CALL-3{050} off") == 0);
+
+    /* an ack the radio refuses or gives up on is reported with the number as received */
+    ev_reset();
+    APRS_StationQueueAck(&st, "N0CALL-3", "050");
+    st.quiet = 0;
+    CHECK(APRS_StationTick(&st) == APRS_ACT_ACK);
+    APRS_StationDrop(&st, &s, APRS_ACT_ACK, APRS_R_BAND);
+    CHECK(evn == 1 && strcmp(evlog[0], "DROP:ack N0CALL-3{050} band") == 0 && st.a_count == 0);
+    ev_reset();
+    APRS_StationQueueAck(&st, "N0CALL-3", "051");
+    slots = 0;
+    while (evn < 1 && slots < 1000) { APRS_StationTick(&st); slots++; }
+    CHECK(strcmp(evlog[0], "DROP:ack N0CALL-3{051} busy") == 0 && st.a_count == 0);
+
+    /* no sink: nothing happens, nothing crashes */
+    APRS_StationSetEventSink(NULL);
+    APRS_StationEnqueue(&st, "K1ABC", "x", true, &seq);
+    APRS_StationClearPending(&st);
+    CHECK(st.q_count == 0);
+    APRS_StationSetEventSink(sink);
+}
+
+static void test_acks(void)
+{
+    aprs_settings_t s = me();
+    aprs_station_t st;
+    uint8_t f[APRS_BUILD_MAX + 4], g[APRS_BUILD_MAX + 4];
+    aprs_rx_info_t info;
+    APRS_StationInit(&st, &s);
+    APRS_StationSetEventSink(sink);
+    ev_reset();
+
+    /* four messages to us within the 5 s gap: all four are acknowledged, oldest first, none replaces another */
+    const char *from[4] = { "N0CALL-3", "N1CALL-4", "N2CALL-5", "N3CALL-6" };
+    for (int i = 0; i < 4; i++) {
+        aprs_settings_t sender = other(from[i], 0);
+        char *dash = strchr(from[i], '-');
+        strncpy(sender.call, from[i], (size_t)(dash - from[i])); sender.ssid = (uint8_t)atoi(dash + 1);
+        const uint16_t len = with_fcs(f, APRS_BuildMessage(f, &sender, "W1ABC-7", "hi", (uint8_t)(40 + i)));
+        CHECK(APRS_StationOnFrame(&st, &s, f, len, &info));
+    }
+    CHECK(st.a_count == 4 && APRS_StationAcksPending(&st) == 4);
+    for (int i = 0; i < 4; i++) {
+        st.quiet = 0;
+        CHECK(APRS_StationTick(&st) == APRS_ACT_ACK);
+        const uint16_t n = APRS_StationBuild(&st, &s, APRS_ACT_ACK, g);
+        char want[40];
+        snprintf(want, sizeof want, ":%-9s:ack%d", from[i], 40 + i);
+        CHECK(strstr(tnc2(g, n), want) != NULL);
+        APRS_StationSent(&st, &s, APRS_ACT_ACK);
+    }
+    CHECK(st.a_count == 0 && evn == 0);
+
+    /* the same sender and number twice (a retry heard before our ack went out) is acknowledged once */
+    CHECK(APRS_StationQueueAck(&st, "N0CALL-3", "42") == APRS_R_OK);
+    CHECK(APRS_StationQueueAck(&st, "N0CALL-3", "42") == APRS_R_OK && st.a_count == 1);
+    CHECK(APRS_StationQueueAck(&st, "N0CALL-3", "43") == APRS_R_OK && st.a_count == 2);   /* another number: another ack */
+    CHECK(APRS_StationQueueAck(&st, "N9XYZ", "42") == APRS_R_OK && st.a_count == 3);      /* another sender: another ack */
+
+    /* a fifth distinct ack does not fit: it is reported, the four waiting are kept */
+    CHECK(APRS_StationQueueAck(&st, "N8XYZ", "1") == APRS_R_OK && st.a_count == 4);
+    ev_reset();
+    CHECK(APRS_StationQueueAck(&st, "N7XYZ", "9") == APRS_R_FULL && st.a_count == 4);
+    CHECK(evn == 1 && strcmp(evlog[0], "DROP:ack N7XYZ{9} full") == 0);
+
+    /* acks go before queued messages, a message goes before a beacon */
+    uint8_t seq;
+    APRS_StationEnqueue(&st, "K1ABC", "x", true, &seq);
+    APRS_StationQueueBeacon(&st);
+    st.quiet = 0;
+    CHECK(APRS_StationTick(&st) == APRS_ACT_ACK);
+}
+
 int main(void)
 {
     test_rxinfo(); test_beacon_timer(); test_limits(); test_raw(); test_messages();
+    test_queue(); test_drops(); test_acks();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;
 }

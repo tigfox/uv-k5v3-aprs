@@ -188,6 +188,7 @@ enable_feature(ENABLE_APRS
     app/aprs_digi.c
     app/aprs_lastheard.c
     app/aprs_msg.c
+    app/aprs_reason.c
     app/aprs_parse.c
     app/aprs_text.c
 )

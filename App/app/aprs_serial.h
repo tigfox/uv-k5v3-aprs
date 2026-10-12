@@ -25,9 +25,13 @@
  * protocol, and never see a text line. All no-ops while no port is monitoring.
  *   APRSRAW:<hex>          every decoded frame, FCS stripped
  *   APRS:<text>            what the radio shows for it
- *   DIGI:<what> <source>   a digipeater decision (QUE DUP CNCL HOPS DROP RPT NOTX BUSY) */
+ *   DIGI:<what> <source>   a digipeater decision (QUE DUP CNCL HOPS DROP RPT NOTX BUSY)
+ *   SENT:<to>{nn}          a queued message went on the air
+ *   DROP:<to>{nn} <why>    a queued message was given up (DROP:ack ... for an ack); see app/aprs_reason.h */
 void APRS_SerialSetMonitor(uint32_t port, bool on);
 bool APRS_SerialMonitoring(void);
+/* One plain-text line (no line ending), to every port that asked for them: the SENT: / DROP: lines. */
+void APRS_SerialLine(const char *line);
 void APRS_SerialFrame(const uint8_t *frame, uint16_t len, const char *text);   /* len includes the FCS */
 void APRS_SerialDigi(const char *what, const uint8_t *frame);
 

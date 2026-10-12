@@ -20,6 +20,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "app/aprs_reason.h"
 
 typedef enum {
     APRS_TX_OK,
@@ -34,7 +35,10 @@ typedef enum {
  * The tones are the BK4829 TX tone path, REG_71 / REG_70 rewritten at each NRZI transition, 833 us
  * apart on the SysTick cycle counter (armel's method, App/apps/aprstx). */
 aprs_tx_result_t APRS_TxSend(const uint8_t *frame, uint16_t len);
-/* True if a transmission would currently be refused for a reason other than the frame. */
+/* Why a transmission would be refused right now, other than for its frame: APRS_R_OK if it would go. The same checks
+ * APRS_TxSend makes; the reason is what the host sees (DROP lines, status). */
+aprs_reason_t APRS_TxWhy(void);
+/* The same as an old-style result: OK, NO_CALL, BUSY (try again) or DENIED. */
 aprs_tx_result_t APRS_TxCheck(void);
 
 #endif

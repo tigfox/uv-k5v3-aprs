@@ -19,6 +19,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "app/aprs_reason.h"
 #include "app/aprs_settings.h"
 
 /* The APRS serial commands (USB-C serial port and the K-plug cable use the same framing as the radio's other
@@ -30,7 +31,9 @@
  * (id + 1, size) then the body; the first byte of the body is Ok (1) unless noted.
  *
  *   0x0700 msg      [ts u32][to 10][text 1..67]   -> 0x0701   queue a message (new line number); the text is the rest
- *                                                         of the data (older hosts send a 30-byte padded field), refused above 67
+ *                                                         of the data (older hosts send a 30-byte padded field), refused above 67.
+ *                                                         Reply: Ok, line number (0 if refused), free queue places, reason code
+ *   0x0712 capabilities (no session)              -> 0x0713   revision, feature bits, queue depth, ack depth, longest text
  *   0x0702 beacon   [ts u32]                      -> 0x0703   queue the station beacon
  *   0x0706 on/off   [ts u32][on u8]               -> 0x0707
  *   0x0708 raw tx   [ts u32][AX.25 frame, no FCS] -> 0x0709   our own callsign as source only
@@ -41,18 +44,27 @@
  */
 
 #define APRS_CMD_FIRST 0x0700u
-#define APRS_CMD_LAST  0x0710u
+#define APRS_CMD_LAST  0x0712u
 #define APRS_CMD_REPLY_MAX 112u
+
+/* Protocol revision and feature bits of the host API (claude/aprs-messaging-api.md). A host reads them with 0x0712. */
+#define APRS_PROTOCOL_REVISION 1u
+#define APRS_CAP_SEND_FIELDS   (1u << 0)   /* the send reply carries the line number, free places and a reason */
+#define APRS_CAP_EVENTS        (1u << 1)   /* SENT: / DROP: monitor lines */
+#define APRS_CAP_ACKQ          (1u << 2)   /* several acks can wait */
+#define APRS_CAP_QUEUE         (1u << 3)   /* several messages can wait; a full queue refuses */
+#define APRS_CAPS_FEATURES     (APRS_CAP_SEND_FIELDS | APRS_CAP_EVENTS | APRS_CAP_ACKQ | APRS_CAP_QUEUE)
 
 typedef struct {
     bool     (*set_on)(bool on);
-    bool     (*queue_message)(const char *to, const char *text);      /* sets target and text, queues; false if empty */
+    aprs_reason_t (*queue_message)(const char *to, const char *text, uint8_t *seq);   /* queues, gives its line number */
     void     (*queue_beacon)(void);
     bool     (*queue_raw)(const uint8_t *frame, uint16_t len);        /* false if a raw frame is already waiting */
     bool     (*apply_settings)(const aprs_settings_t *s);             /* save, restart the receiver as needed */
     void     (*get_settings)(aprs_settings_t *s);
     void     (*get_digi_stats)(uint16_t stats[6], uint32_t *uptime_ticks);
     void     (*set_monitor)(uint32_t port, bool on);
+    uint8_t  (*queue_free)(void);                                     /* free places in the message queue */
 } aprs_cmd_ops_t;
 
 /* Run command `id` (data: the bytes after the header; size: how many). port_ts is the timestamp this port

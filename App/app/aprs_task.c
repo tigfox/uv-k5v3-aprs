@@ -21,11 +21,13 @@
 #include "driver/backlight.h"
 #include "app/aprs_menu_text.h"
 #include "app/aprs_rxinfo.h"
+#include "app/aprs_reason.h"
 #include "app/aprs_serial.h"
 #include "app/aprs_station.h"
 #include "app/aprs_store.h"
 #include "audio.h"
 #include "driver/aprs_rx.h"
+#include "driver/aprs_tx.h"
 #include "functions.h"
 #include "misc.h"
 #include "settings.h"
@@ -75,10 +77,19 @@ static void apply_digi_settings(void)
     gAPRS_DigiDelay = gAprsSettings.digi_delay;
 }
 
+/* what the station reports (SENT / DROP) goes to a host that is monitoring */
+static void task_event(const aprs_event_t *e)
+{
+    char line[APRS_EVENT_LINE_MAX];
+    APRS_EventLine(e, line, sizeof line);
+    APRS_SerialLine(line);
+}
+
 void APRS_TaskInit(void)
 {
     apply_digi_settings();
     APRS_StationInit(&gStation, &gAprsSettings);
+    APRS_StationSetEventSink(task_event);
     APRS_TaskSettingsChanged();                    // remember what the timer was armed for
     if (gAprsSettings.aprs_on) {
         force_main_only();
@@ -274,7 +285,7 @@ static void transmit_slot(void)
     static uint8_t frame[APRS_RAWTX_MAX + 2];
     const uint16_t len = APRS_StationBuild(&gStation, &gAprsSettings, act, frame);
     if (len == 0) {
-        APRS_StationDrop(&gStation, &gAprsSettings, act);      // e.g. a beacon with no Loc
+        APRS_StationDrop(&gStation, &gAprsSettings, act, APRS_R_OK);   // e.g. a beacon with no Loc
         return;
     }
     const aprs_tx_result_t r = APRS_TxSend(frame, len);
@@ -283,7 +294,10 @@ static void transmit_slot(void)
     } else if (r == APRS_TX_BUSY) {
         return;                                               // scanning or being configured: offered again next slot (it expires)
     } else {
-        APRS_StationDrop(&gStation, &gAprsSettings, act);      // not allowed here: do not retry forever
+        aprs_reason_t why = r == APRS_TX_BAD_FRAME ? APRS_R_TOOLONG : APRS_TxWhy();
+        if (why == APRS_R_OK)
+            why = APRS_R_BUSY;                                // it cleared between the refusal and now: say busy
+        APRS_StationDrop(&gStation, &gAprsSettings, act, why);   // not allowed here: do not retry forever
         AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL);
     }
     gUpdateDisplay = true;
@@ -340,11 +354,14 @@ void APRS_DStatString(char *out, size_t n, unsigned view)
 }
 
 /* ---- what the serial commands (app/aprs_cmd.c) act on ---- */
-static bool op_queue_message(const char *to, const char *text)
+static aprs_reason_t op_queue_message(const char *to, const char *text, uint8_t *seq)
 {
-    APRS_TaskSetMsgTo(to);
-    APRS_TaskSetMsgText(text);
-    return APRS_TaskQueueSend();                   // false for an empty target or text
+    return APRS_StationEnqueue(&gStation, to, text, true, seq);   // a host message always takes a new line number
+}
+
+static uint8_t op_queue_free(void)
+{
+    return APRS_StationMsgFree(&gStation);
 }
 
 static bool op_queue_raw(const uint8_t *frame, uint16_t len)
@@ -375,6 +392,7 @@ const aprs_cmd_ops_t *APRS_TaskCmdOps(void)
         .get_settings = op_get_settings,
         .get_digi_stats = op_digi_stats,
         .set_monitor = APRS_SerialSetMonitor,
+        .queue_free = op_queue_free,
     };
     return &ops;
 }

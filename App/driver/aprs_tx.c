@@ -50,22 +50,36 @@ static uint32_t cyc_now(cyc_t *c)
     return c->total;
 }
 
-aprs_tx_result_t APRS_TxCheck(void)
+aprs_reason_t APRS_TxWhy(void)
 {
     if (!APRS_CallIsSet(&gAprsSettings))
-        return APRS_TX_NO_CALL;
-    if (TX_freq_check(gTxVfo->pTX->Frequency) != 0 || gTxVfo->Modulation != MODULATION_FM)
-        return APRS_TX_DENIED;
+        return APRS_R_NOCALL;
+    if (!gAprsSettings.aprs_on)
+        return APRS_R_APRSOFF;
+    if (TX_freq_check(gTxVfo->pTX->Frequency) != 0)
+        return APRS_R_BAND;
+    if (gTxVfo->Modulation != MODULATION_FM)
+        return APRS_R_MODE;
     if (gBatteryDisplayLevel == 0 || gBatteryDisplayLevel > 6)
-        return APRS_TX_DENIED;
+        return APRS_R_BATTERY;
     /* not while the radio is doing something else with the VFOs and the receiver */
     if (gScanStateDir != SCAN_OFF || gCssBackgroundScan || SerialConfigInProgress())
-        return APRS_TX_BUSY;
+        return APRS_R_BUSY;
 #ifdef ENABLE_FMRADIO_EMBEDDED
     if (gFmRadioMode)
-        return APRS_TX_BUSY;
+        return APRS_R_BUSY;
 #endif
-    return APRS_TX_OK;
+    return APRS_R_OK;
+}
+
+aprs_tx_result_t APRS_TxCheck(void)
+{
+    switch (APRS_TxWhy()) {
+    case APRS_R_OK:     return APRS_TX_OK;
+    case APRS_R_NOCALL: return APRS_TX_NO_CALL;
+    case APRS_R_BUSY:   return APRS_TX_BUSY;
+    default:            return APRS_TX_DENIED;
+    }
 }
 
 static void set_tone(bool space)

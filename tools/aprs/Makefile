@@ -3,7 +3,7 @@ CFLAGS = -std=c11 -Wall -Wextra -Werror -I../../App -O1 -g -fsanitize=address,un
 CORE = $(addprefix ../../App/app/, aprs_ax25.c aprs_beacon.c aprs_digi.c aprs_lastheard.c aprs_msg.c aprs_parse.c aprs_text.c aprs_settings.c)
 SRC = ../../App/app/aprs_settings.c
 
-test: test_aprs_settings test_aprs_bands test_aprs_menu_text test_aprs_core test_aprs_build test_aprs_demod test_aprs_modem test_aprs_edit test_aprs_station test_aprs_cmd vectors
+test: test_aprs_settings test_aprs_bands test_aprs_menu_text test_aprs_core test_aprs_build test_aprs_demod test_aprs_modem test_aprs_edit test_aprs_station test_aprs_cmd test_aprs_reason vectors
 	./test_aprs_settings
 	./test_aprs_bands
 	./test_aprs_menu_text
@@ -14,6 +14,7 @@ test: test_aprs_settings test_aprs_bands test_aprs_menu_text test_aprs_core test
 	./test_aprs_edit
 	./test_aprs_station
 	./test_aprs_cmd
+	./test_aprs_reason
 	python3 -m pytest -q test_aprs_pc.py
 
 test_aprs_settings: test_aprs_settings.c $(SRC)
@@ -23,6 +24,9 @@ test_aprs_bands: test_aprs_bands.c ../../App/app/aprs_bands.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 test_aprs_menu_text: test_aprs_menu_text.c ../../App/app/aprs_menu_text.c ../../App/app/aprs_parse.c ../../App/app/aprs_settings.c
+	$(CC) $(CFLAGS) -o $@ $^
+
+test_aprs_reason: test_aprs_reason.c ../../App/app/aprs_reason.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 test_aprs_core: test_aprs_core.c $(CORE)
@@ -43,7 +47,7 @@ test_aprs_modem: test_aprs_modem.c ../../App/app/aprs_digi.c ../../App/app/aprs_
 test_aprs_edit: test_aprs_edit.c ../../App/app/aprs_edit.c ../../App/app/aprs_msg.c ../../App/app/aprs_beacon.c ../../App/app/aprs_ax25.c ../../App/app/aprs_items.c ../../App/app/aprs_menu_text.c ../../App/app/aprs_text.c ../../App/app/aprs_parse.c ../../App/app/aprs_settings.c
 	$(CC) $(CFLAGS) -o $@ $^
 
-test_aprs_station: test_aprs_station.c ../../App/app/aprs_station.c ../../App/app/aprs_rxinfo.c ../../App/app/aprs_ax25.c ../../App/app/aprs_beacon.c ../../App/app/aprs_msg.c ../../App/app/aprs_parse.c ../../App/app/aprs_settings.c
+test_aprs_station: test_aprs_station.c ../../App/app/aprs_reason.c ../../App/app/aprs_station.c ../../App/app/aprs_rxinfo.c ../../App/app/aprs_ax25.c ../../App/app/aprs_beacon.c ../../App/app/aprs_msg.c ../../App/app/aprs_parse.c ../../App/app/aprs_settings.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 test_aprs_cmd: test_aprs_cmd.c ../../App/app/aprs_cmd.c ../../App/app/aprs_digi.c ../../App/app/aprs_ax25.c ../../App/app/aprs_beacon.c ../../App/app/aprs_parse.c ../../App/app/aprs_settings.c

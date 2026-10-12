@@ -13,3 +13,4 @@ test_aprs_station
 test_aprs_cmd
 __pycache__
 .pytest_cache
+test_aprs_reason

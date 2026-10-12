@@ -16,6 +16,7 @@
 
 #include "app/aprs_cmd.h"
 #include "app/aprs_msg.h"
+#include "app/aprs_station.h"
 #include "app/aprs_ax25.h"
 #include "app/aprs_digi.h"
 #include <string.h>
@@ -35,6 +36,18 @@ static uint16_t ack(uint8_t *reply, uint16_t id, bool ok)
     wr16(reply + 2, 4);
     reply[4] = ok ? 1u : 0u;
     reply[5] = reply[6] = reply[7] = 0;
+    return 8;
+}
+
+/* the reply to a send: [Ok][line number][free places][reason] */
+static uint16_t msg_reply(uint8_t *reply, const aprs_cmd_ops_t *ops, aprs_reason_t reason, uint8_t seq)
+{
+    wr16(reply, 0x0701);
+    wr16(reply + 2, 4);
+    reply[4] = reason == APRS_R_OK ? 1u : 0u;
+    reply[5] = reason == APRS_R_OK ? seq : 0u;
+    reply[6] = ops->queue_free();
+    reply[7] = (uint8_t)reason;
     return 8;
 }
 
@@ -97,13 +110,20 @@ uint16_t APRS_CmdRun(const aprs_cmd_ops_t *ops, uint32_t port, uint16_t id, cons
     case 0x0700: {
         char to[10], text[APRS_MSG_TEXT_MAX + 1];
         const uint16_t text_len = size > 14u ? (uint16_t)(size - 14u) : 0u;    // whatever follows the destination
-        bool ok = text_len >= 1u && text_len <= APRS_MSG_TEXT_MAX && authed(d, size, port_ts);   // longer: refused, never cut
-        if (ok) {
+        uint8_t seq = 0;
+        aprs_reason_t why = APRS_R_OK;
+        if (!authed(d, size, port_ts))
+            why = APRS_R_SESSION;
+        else if (text_len == 0u)
+            why = APRS_R_EMPTY;
+        else if (text_len > APRS_MSG_TEXT_MAX)
+            why = APRS_R_TOOLONG;                                              // refused, never cut
+        else {
             memcpy(to, d + 4, 9);   to[9] = 0;
             memcpy(text, d + 14, text_len); text[text_len] = 0;    // a NUL inside ends the text early
-            ok = ops->queue_message(to, text);
+            why = ops->queue_message(to, text, &seq);
         }
-        return ack(reply, 0x0701, ok);
+        return msg_reply(reply, ops, why, seq);
     }
     case 0x0702: {
         const bool ok = authed(d, size, port_ts);
@@ -141,6 +161,19 @@ uint16_t APRS_CmdRun(const aprs_cmd_ops_t *ops, uint32_t port, uint16_t id, cons
             ok = APRS_SettingsDecode(d + 4, &n) && ops->apply_settings(&n);   /* all of it or nothing */
         }
         return ack(reply, 0x070F, ok);
+    }
+    case 0x0712: {                  // what this firmware can do: no session, read-only
+        wr16(reply, 0x0713);
+        wr16(reply + 2, 12);
+        reply[4] = 1;
+        reply[5] = APRS_PROTOCOL_REVISION;
+        reply[6] = reply[7] = 0;
+        wr32(reply + 8, APRS_CAPS_FEATURES);
+        reply[12] = APRS_MSGQ_DEPTH;
+        reply[13] = APRS_ACKQ_DEPTH;
+        reply[14] = APRS_MSG_TEXT_MAX;
+        reply[15] = 0;
+        return 16;
     }
     case 0x0710:
         if (size >= 1u)

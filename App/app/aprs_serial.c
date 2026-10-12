@@ -78,6 +78,15 @@ static void flush(line_t *l)
     l->n = 0;
 }
 
+void APRS_SerialLine(const char *line)
+{
+    if (!APRS_SerialMonitoring())
+        return;
+    line_t l = { .n = 0 };
+    put(&l, line, (uint16_t)strlen(line));
+    flush(&l);
+}
+
 void APRS_SerialFrame(const uint8_t *frame, uint16_t len, const char *text)
 {
     if (!APRS_SerialMonitoring())

@@ -311,3 +311,69 @@ def test_the_example_site_file_is_valid():
         st = aprs_pc.settings_from_json(json.load(f))
     assert (st.call, st.ssid, st.aprs_on, st.digi_mode, st.beacon_type) == ("KD2DCM", 1, True, 2, 1)
     aprs_pc.pack_record(st)
+
+
+# ------------------------------------------- send reply fields, reasons, capabilities, events ----
+def msg_reply(ok=1, seq=0, free=0, reason=0):
+    return struct.pack("<HHBBBB", 0x0701, 4, ok, seq, free, reason)
+
+
+def test_send_reply_shows_the_line_number_and_free_places(capsys):
+    radio = FakeRadio([msg_reply(1, 7, 3, 0)])
+    assert aprs_pc.cmd_msg(radio, 1, "N0CALL-7", "hello") == 0
+    out = capsys.readouterr().out
+    assert "queued" in out and "07" in out and "3 free" in out
+
+
+def test_send_refusals_name_the_reason(capsys):
+    for code, word in ((1, "full"), (2, "session"), (3, "empty"), (4, "toolong")):
+        radio = FakeRadio([msg_reply(0, 0, 0, code)])
+        assert aprs_pc.cmd_msg(radio, 1, "N0CALL-7", "x") == 1
+        assert word in capsys.readouterr().out
+
+
+def test_older_firmware_reply_still_works(capsys):
+    radio = FakeRadio([reply(0x0701)])                  # the three bytes after Ok are padding there
+    assert aprs_pc.cmd_msg(radio, 1, "N0CALL-7", "x") == 0
+    assert "queued" in capsys.readouterr().out
+
+
+def test_reason_table_matches_the_firmware():
+    assert aprs_pc.REASONS == ("", "full", "session", "empty", "toolong", "busy", "nocall", "aprsoff", "band",
+                               "battery", "mode", "replaced", "off")
+
+
+def test_capabilities_command_and_reply(capsys):
+    body = struct.pack("<BB2xIBBBx", 1, 1, 0b1111, 4, 4, 67)
+    radio = FakeRadio([struct.pack("<HH", 0x0713, len(body)) + body])
+    assert aprs_pc.cmd_caps(radio) == 0
+    assert radio.commands() == [(0x0712, b"")]
+    out = capsys.readouterr().out
+    assert "revision 1" in out and "queue 4" in out and "acks 4" in out and "67" in out and "events" in out
+    radio = FakeRadio([])                               # an older firmware does not answer
+    assert aprs_pc.cmd_caps(radio) == 1
+    assert "revision 0" in capsys.readouterr().out
+
+
+def test_monitor_lines_for_sent_and_dropped_messages():
+    assert aprs_pc.monitor_line(b"SENT:KD2DCM-1{07}") == "sent KD2DCM-1{07}"
+    assert aprs_pc.monitor_line(b"DROP:KD2DCM-1{07} busy") == "dropped KD2DCM-1{07} busy"
+    assert aprs_pc.monitor_line(b"DROP:ack KD2DCM-1{050} busy") == "dropped ack KD2DCM-1{050} busy"
+    assert aprs_pc.monitor_line(b"APRS:hello") == "hello"          # the old lines still work
+
+
+def test_the_port_is_opened_with_dtr_and_rts_low():
+    calls = []
+
+    class Port:
+        def __init__(self):
+            self.dtr = self.rts = True                 # a freshly constructed port asserts both
+
+        def open(self):
+            calls.append(("open", self.port, self.baudrate, self.dtr, self.rts))
+
+    class Serial:
+        Serial = Port
+
+    ser = aprs_pc.open_port("/dev/cu.test", Serial)
+    assert calls == [("open", "/dev/cu.test", 38400, False, False)] and ser.timeout == 1.0
