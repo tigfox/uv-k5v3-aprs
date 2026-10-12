@@ -34,6 +34,7 @@
  *                                                         of the data (older hosts send a 30-byte padded field), refused above 67.
  *                                                         Reply: Ok, line number (0 if refused), free queue places, reason code
  *   0x0712 capabilities (no session)              -> 0x0713   revision, feature bits, queue depth, ack depth, longest text
+ *   0x0714 status       (no session)              -> 0x0715   battery, frequency, can it transmit and why not, counters
  *   0x0702 beacon   [ts u32]                      -> 0x0703   queue the station beacon
  *   0x0706 on/off   [ts u32][on u8]               -> 0x0707
  *   0x0708 raw tx   [ts u32][AX.25 frame, no FCS] -> 0x0709   our own callsign as source only
@@ -44,7 +45,7 @@
  */
 
 #define APRS_CMD_FIRST 0x0700u
-#define APRS_CMD_LAST  0x0712u
+#define APRS_CMD_LAST  0x0714u
 #define APRS_CMD_REPLY_MAX 112u
 
 /* Protocol revision and feature bits of the host API (claude/aprs-messaging-api.md). A host reads them with 0x0712. */
@@ -53,7 +54,25 @@
 #define APRS_CAP_EVENTS        (1u << 1)   /* SENT: / DROP: monitor lines */
 #define APRS_CAP_ACKQ          (1u << 2)   /* several acks can wait */
 #define APRS_CAP_QUEUE         (1u << 3)   /* several messages can wait; a full queue refuses */
-#define APRS_CAPS_FEATURES     (APRS_CAP_SEND_FIELDS | APRS_CAP_EVENTS | APRS_CAP_ACKQ | APRS_CAP_QUEUE)
+#define APRS_CAP_STATUS        (1u << 4)   /* the status command */
+#define APRS_CAP_COUNTERS      (1u << 9)   /* frame counters in the status reply (bits 5-8 are for the requests still to come) */
+#define APRS_CAPS_FEATURES     (APRS_CAP_SEND_FIELDS | APRS_CAP_EVENTS | APRS_CAP_ACKQ | APRS_CAP_QUEUE | APRS_CAP_STATUS | \
+                                APRS_CAP_COUNTERS)
+
+/* What the status command reports; the radio side fills it (aprs_task.c). */
+typedef struct {
+    uint16_t battery_mv;
+    uint32_t freq_10hz;       /* the main VFO's receive frequency, 10 Hz units */
+    uint16_t decoded;         /* good frames decoded since APRS was switched on (wraps) */
+    uint16_t bad_fcs;         /* packet-shaped bursts that failed the checksum and were not rescued (wraps) */
+    uint16_t sent;            /* packets transmitted by this station: messages, acks, beacons, digipeater repeats (wraps) */
+    uint8_t  queue_free;      /* free places in the message queue */
+    uint8_t  acks_pending;
+    bool     would_tx;        /* it would transmit now */
+    bool     busy;            /* the channel is busy (a packet arriving, or squelch open) */
+    bool     in_band;         /* the TX frequency is inside the allowed bands */
+    aprs_reason_t why;        /* why it would not transmit (APRS_R_OK if it would) */
+} aprs_status_t;
 
 typedef struct {
     bool     (*set_on)(bool on);
@@ -65,6 +84,8 @@ typedef struct {
     void     (*get_digi_stats)(uint16_t stats[6], uint32_t *uptime_ticks);
     void     (*set_monitor)(uint32_t port, bool on);
     uint8_t  (*queue_free)(void);                                     /* free places in the message queue */
+    void     (*get_status)(aprs_status_t *st);
+    bool     (*monitoring)(uint32_t port);                            /* is this port receiving the monitor lines */
 } aprs_cmd_ops_t;
 
 /* Run command `id` (data: the bytes after the header; size: how many). port_ts is the timestamp this port

@@ -39,6 +39,7 @@ typedef struct {
     uint32_t samples;       /* ADC samples demodulated */
     uint32_t frames;        /* good frames decoded */
     uint32_t dropped;       /* decoded but the queue was full */
+    uint32_t bad_fcs;       /* damaged packets: packet-shaped bursts that failed the FCS (see APRS_DemodBadFrames) */
     uint32_t isr_cycles_max;/* longest interrupt, in CPU cycles (48 per microsecond) since the last read */
     uint32_t isr_cycles_avg;/* mean over the same period */
 } aprs_rx_stats_t;
@@ -56,6 +57,8 @@ bool APRS_RxPop(aprs_rx_frame_t *out);
 bool APRS_RxBusy(void);
 /* Counters; resets the cycle maximum and mean. */
 aprs_rx_stats_t APRS_RxStats(void);
+/* Just the frame counters (good frames, damaged packets), without touching the cycle statistics. */
+void APRS_RxCounts(uint32_t *frames, uint32_t *bad_fcs);
 
 /* Hold the ADC for a conversion on another channel (the battery). The sampling interrupt is
  * held off between the two calls (one sample is delayed, not lost). No-ops when stopped. */

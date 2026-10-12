@@ -377,3 +377,35 @@ def test_the_port_is_opened_with_dtr_and_rts_low():
 
     ser = aprs_pc.open_port("/dev/cu.test", Serial)
     assert calls == [("open", "/dev/cu.test", 38400, False, False)] and ser.timeout == 1.0
+
+
+# ------------------------------------------------------------------- status command ----
+def status_reply(flags=0b1010, why=0, mv=7420, decoded=258, freq=14439000, bad=7, sent=12, qfree=3, acks=1):
+    body = struct.pack("<BBBxHHIHHBBxx", 1, flags, why, mv, decoded, freq, bad, sent, qfree, acks)
+    return struct.pack("<HH", 0x0715, len(body)) + body
+
+
+def test_parse_status_reads_every_field():
+    st = aprs_pc.parse_status(status_reply())
+    assert st == aprs_pc.RadioStatus(monitoring=False, would_tx=True, busy=False, in_band=True, reason="", battery_mv=7420,
+                                     decoded=258, freq_hz=144390000, bad_fcs=7, sent=12, queue_free=3, acks_pending=1)
+    st = aprs_pc.parse_status(status_reply(flags=0b0101, why=8))
+    assert st.monitoring and st.busy and not st.would_tx and not st.in_band and st.reason == "band"
+    assert aprs_pc.parse_status(None) is None
+    assert aprs_pc.parse_status(struct.pack("<HH", 0x0715, 4) + b"\x01\x00\x00\x00") is None      # too short
+    assert aprs_pc.parse_status(reply(0x0701)) is None                                           # not a status reply
+
+
+def test_status_command_asks_without_a_session_and_prints(capsys):
+    radio = FakeRadio([status_reply()])
+    assert aprs_pc.cmd_radio_status(radio) == 0
+    assert radio.commands() == [(0x0714, b"")]
+    out = capsys.readouterr().out
+    assert "7.42 V" in out and "144.390000 MHz" in out and "would transmit" in out
+    assert "decoded 258" in out and "damaged 7" in out and "sent 12" in out and "queue 3 free" in out
+    radio = FakeRadio([status_reply(flags=0b0100, why=9)])
+    aprs_pc.cmd_radio_status(radio)
+    out = capsys.readouterr().out
+    assert "would not transmit: battery" in out and "channel busy" in out
+    assert aprs_pc.cmd_radio_status(FakeRadio([])) == 1                 # an older firmware does not answer
+    assert "older firmware" in capsys.readouterr().out

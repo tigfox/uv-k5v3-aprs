@@ -43,6 +43,12 @@ void APRS_SerialSetMonitor(uint32_t port, bool on)
         gMon[i] = on;
 }
 
+bool APRS_SerialMonitoringPort(uint32_t port)
+{
+    const int i = slot(port);
+    return i >= 0 && gMon[i];
+}
+
 bool APRS_SerialMonitoring(void)
 {
     return gMon[0] || gMon[1];

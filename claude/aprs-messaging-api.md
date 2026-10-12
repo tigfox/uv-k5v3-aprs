@@ -196,10 +196,13 @@ Reply data (12 bytes): `Ok u8`, `revision u8`, 2 padding bytes, `features u32`, 
 | 1 | `events` | `SENT:` / `DROP:` monitor lines (6) |
 | 2 | `acks` | several acks can wait (`ack_depth`) |
 | 3 | `queue` | several messages can wait (`queue_depth`); a full queue refuses |
+| 4 | `status` | the status command (5.8) |
+| 5-8 | | reserved for features still to come (section 10) |
+| 9 | `counters` | the frame counters in the status reply |
 
-Revision 1 is: bits 0-3 set, `queue_depth` 4, `ack_depth` 4, `max_text` 67. Later bits and revisions are added at the end; ignore bits you do not know.
+Revision 1 is: bits 0-4 and 9 set (`features = 0x21f`), `queue_depth` 4, `ack_depth` 4, `max_text` 67. Later bits and revisions are added; ignore bits you do not know.
 
-### 5.7 Reason codes (one table: the send reply, `DROP:` lines, and the status command when it is added)
+### 5.7 Reason codes (one table: the send reply, `DROP:` lines and the status command)
 
 | Code | Text | Meaning |
 |---|---|---|
@@ -216,6 +219,37 @@ Revision 1 is: bits 0-3 set, `queue_depth` 4, `ack_depth` 4, `max_text` 67. Late
 | 10 | `mode` | the TX VFO is not FM |
 | 11 | `replaced` | reserved: this firmware never replaces |
 | 12 | `off` | APRS was switched off while this was waiting |
+
+### 5.8 Status: `0x0714`  ->  `0x0715`  (no data, no `ts`, read-only)
+
+Everything a program needs to check before a race, or while it runs. Reply data (20 bytes):
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 1 | `Ok` (1) |
+| 1 | 1 | flags: bit 0 monitoring is on **for the port you asked on**; bit 1 the radio **would transmit now**; bit 2 the channel is busy (a packet arriving, or squelch open); bit 3 the TX frequency is inside the allowed bands |
+| 2 | 1 | reason: why it would **not** transmit now (section 5.7; 0 when it would) |
+| 3 | 1 | padding |
+| 4 | 2 | battery voltage, millivolts (`u16`) |
+| 6 | 2 | frames decoded since APRS was switched on (`u16`, wraps) |
+| 8 | 4 | the main VFO's receive frequency, in units of 10 Hz (`u32`): 14 439 000 = 144.390 MHz |
+| 12 | 2 | damaged packets (`u16`, wraps): bursts that looked like a packet (a callsign-like header, a minimum length) but failed the checksum, and that no demodulator decoded; a sign of a weak signal or a bad audio path. It is an approximation: noise can also look like a packet |
+| 14 | 2 | packets this station transmitted since power-up (`u16`, wraps): messages, acks, beacons and digipeater repeats |
+| 16 | 1 | free places in the message queue |
+| 17 | 1 | acks waiting |
+| 18 | 2 | padding |
+
+Worked example (battery 7.42 V, 144.390 MHz in band, would transmit, 258 decoded, 7 damaged, 12 sent, 3 queue places free, 1 ack waiting):
+
+```
+command   ab cd 04 00 02 6b 14 e6 e8 c5 dc ba                 (payload 14 07 00 00)
+payload   15 07 14 00 | 01 0a 00 00 | fc 1c | 02 01 | 58 52 dc 00 | 07 00 | 0c 00 | 03 | 01 | 00 00
+wire      ab cd 18 00 03 6b 00 e6 2f 9b 0d 40 dd 29 d7 41 4b 51 35 80 11 6c 18 e6 2d 90 0d 40 de ca dc ba
+```
+
+The frequency is the receive frequency of the main VFO; the "in band" flag checks the **transmit** frequency, which differs on a
+repeater channel. Use it with the `DROP:` reasons: `would not transmit: band` says the same thing a `DROP:... band` line would,
+before anything is sent.
 
 ## 6. Receiving: monitor lines
 
@@ -301,13 +335,12 @@ not the number of messages you may have waiting.
 | `Ok = 1` but no `SENT:` or `DROP:` ever | monitoring is off, or the line was lost on the port: fall back to a timeout |
 | Text lines in the stream | monitoring is on; parse as in section 3 |
 
-## 10. Not in the firmware yet (planned, in this order)
+## 10. Not in the firmware yet (planned)
 
-See `claude/aprs-firmware-request-estimate.md` for the status. Each adds a feature bit to `0x0712`; do not rely on one until the bit is set.
+See `claude/aprs-firmware-request-estimate.md` for the status. Each adds a feature bit to `0x0712` (bits 5-8); do not rely on one until the bit is set.
 
 | Feature | Command / line | Notes |
 |---|---|---|
-| Status | `0x0714` -> `0x0715` | battery, frequency, in band, would it transmit now and why, channel busy, monitoring on, frame counters |
 | Set callsign / SSID | `0x0716` -> `0x0717` | with `ts`; lets a program assign callsigns from a list |
 | Digipeater path for messages and acks | settings byte 92, menu item | none / `WIDE1-1` / `WIDE1-1,WIDE2-1` (default, as today) |
 | Minimum gap between transmissions | settings byte 93, menu item | 2-10 s, default 5 s |

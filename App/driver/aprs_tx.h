@@ -38,6 +38,8 @@ aprs_tx_result_t APRS_TxSend(const uint8_t *frame, uint16_t len);
 /* Why a transmission would be refused right now, other than for its frame: APRS_R_OK if it would go. The same checks
  * APRS_TxSend makes; the reason is what the host sees (DROP lines, status). */
 aprs_reason_t APRS_TxWhy(void);
+/* Packets transmitted since power-up (all kinds; wraps at 65536). */
+uint16_t APRS_TxCount(void);
 /* The same as an old-style result: OK, NO_CALL, BUSY (try again) or DENIED. */
 aprs_tx_result_t APRS_TxCheck(void);
 

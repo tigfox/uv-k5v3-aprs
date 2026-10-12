@@ -50,6 +50,13 @@ static uint32_t cyc_now(cyc_t *c)
     return c->total;
 }
 
+static uint16_t gSentCount;
+
+uint16_t APRS_TxCount(void)
+{
+    return gSentCount;
+}
+
 aprs_reason_t APRS_TxWhy(void)
 {
     if (!APRS_CallIsSet(&gAprsSettings))
@@ -139,5 +146,6 @@ aprs_tx_result_t APRS_TxSend(const uint8_t *frame, uint16_t len)
     RADIO_SetupRegisters(true);                  // back to receive
     gCurrentVfo = savedVfo;
     APRS_RxResume();
+    gSentCount++;
     return APRS_TX_OK;
 }

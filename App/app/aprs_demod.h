@@ -58,6 +58,8 @@ typedef struct {
     uint32_t last_at;                  /* sample number of the last accepted frame */
     uint16_t last_len;                 /* ... and its length and FCS, to drop another slicer's copy */
     uint8_t  last_fcs[2];
+    uint32_t bad_fcs;                  /* packet-shaped bursts that failed the FCS and that no slicer rescued */
+    uint8_t  bad_wait;                 /* samples left to wait for another slicer to rescue the burst, 0 = none */
     uint16_t out_len;                  /* frame completed by the last call, 0 = none */
     const uint8_t *out;                /* ... and where it is (a slicer's buffer) */
 } aprs_demod_t;
@@ -71,5 +73,8 @@ const uint8_t *APRS_DemodFrame(const aprs_demod_t *d);
  * whose first bytes look like a callsign: transmitting now would step on a packet. Noise
  * is busy about 4 % of the time. */
 bool APRS_DemodBusy(const aprs_demod_t *d);
+/* How many packet-shaped bursts (a callsign-like header, a minimum length) ended with a bad FCS on the first slicer and were
+ * not decoded by another slicer within two bit times: the damaged packets, since the demodulator started. */
+uint32_t APRS_DemodBadFrames(const aprs_demod_t *d);
 
 #endif

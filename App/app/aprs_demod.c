@@ -30,6 +30,7 @@
 #define PRE_BITS    24u    /* busy for 3 bytes after two back-to-back flags */
 #define FRAME_MIN   18u    /* 2 addresses + control + PID + FCS */
 #define FCS_GOOD    0xF0B8u
+#define BAD_WAIT_SAMPLES 32u        /* four bits: the other slicers close the same frame within a few bits of each other */
 #define DUP_SAMPLES APRS_DEMOD_FS   /* the same frame from another slicer within 1 s */
 
 /* 127 * cos(2 pi f n / 9600): one period of 1200 Hz (8 entries) and 11 cycles of 2200 Hz (48).
@@ -67,6 +68,7 @@ static bool is_ui(const uint8_t *f, uint16_t n)
 /* A good frame from slicer m: pending unless another slicer just gave it. */
 static void accept(aprs_demod_t *d, const aprs_slicer_t *m)
 {
+    d->bad_wait = 0;                   /* a burst the first slicer failed on was decoded by another: not damaged */
     const uint16_t n = m->n;
     const bool dup = d->last_len == n && d->last_fcs[0] == m->buf[n - 2] && d->last_fcs[1] == m->buf[n - 1]
                   && (d->samples - d->last_at) < DUP_SAMPLES;
@@ -89,6 +91,9 @@ static void hdlc_bit(aprs_demod_t *d, aprs_slicer_t *m, uint8_t b)
     m->sr = (uint8_t)((m->sr >> 1) | (b << 7));
     if (m->sr == 0x7Eu) {
         const bool ok = m->inframe && m->n >= FRAME_MIN && m->crc == FCS_GOOD && is_ui(m->buf, m->n);
+        if (!ok && m == &d->sl[0] && m->inframe && m->n >= FRAME_MIN && m->hdr && d->bad_wait == 0
+            && d->samples - d->last_at >= BAD_WAIT_SAMPLES)
+            d->bad_wait = BAD_WAIT_SAMPLES;      /* looked like a packet, failed the FCS: damaged unless another slicer gets it */
         m->pre = m->bits == 8u;
         m->bits = 0;
         if (ok)
@@ -196,12 +201,19 @@ uint16_t APRS_DemodSample(aprs_demod_t *d, uint16_t adc)
     front(d, (int32_t)(adc & 0x0FFFu), &a, &b);
     for (uint8_t k = 0; k < APRS_DEMOD_SLICERS; k++)
         slice(d, &d->sl[k], a, b);
+    if (d->bad_wait && --d->bad_wait == 0)
+        d->bad_fcs++;
     return d->out_len;
 }
 
 const uint8_t *APRS_DemodFrame(const aprs_demod_t *d)
 {
     return d->out;
+}
+
+uint32_t APRS_DemodBadFrames(const aprs_demod_t *d)
+{
+    return d->bad_fcs;
 }
 
 bool APRS_DemodBusy(const aprs_demod_t *d)

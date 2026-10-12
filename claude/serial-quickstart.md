@@ -25,7 +25,9 @@ Below, `PORT` stands for that path, for example `/dev/cu.usbmodem1101`.
 python3 aprs_pc.py PORT status
 ```
 
-You should see the firmware version, your callsign and settings, and the digipeater counters. If it says
+You should see the firmware version, your callsign and settings, and the digipeater counters. Newer firmware adds the radio's own
+state: battery, the frequency, whether it would transmit now (and if not, why: `band`, `battery`, `nocall` ...), whether the channel is busy,
+the packets decoded, damaged and sent, and the free places in the message queue. If it says
 *no answer from the radio*: wrong port, or the radio is off. Close UV Studio first (only one program can have
 the port).
 

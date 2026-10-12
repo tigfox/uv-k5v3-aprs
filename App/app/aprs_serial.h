@@ -30,6 +30,7 @@
  *   DROP:<to>{nn} <why>    a queued message was given up (DROP:ack ... for an ack); see app/aprs_reason.h */
 void APRS_SerialSetMonitor(uint32_t port, bool on);
 bool APRS_SerialMonitoring(void);
+bool APRS_SerialMonitoringPort(uint32_t port);   /* has this port asked for the monitor lines */
 /* One plain-text line (no line ending), to every port that asked for them: the SENT: / DROP: lines. */
 void APRS_SerialLine(const char *line);
 void APRS_SerialFrame(const uint8_t *frame, uint16_t len, const char *text);   /* len includes the FCS */

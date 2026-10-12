@@ -28,7 +28,9 @@
 #include "audio.h"
 #include "driver/aprs_rx.h"
 #include "driver/aprs_tx.h"
+#include "frequencies.h"
 #include "functions.h"
+#include "helper/battery.h"
 #include "misc.h"
 #include "settings.h"
 #include "stack_usage.h"
@@ -364,6 +366,24 @@ static uint8_t op_queue_free(void)
     return APRS_StationMsgFree(&gStation);
 }
 
+static void op_get_status(aprs_status_t *st)
+{
+    memset(st, 0, sizeof *st);
+    st->battery_mv = (uint16_t)(gBatteryVoltageAverage * 10u);          // the gauge is in 10 mV
+    st->freq_10hz = gTxVfo->pRX->Frequency;
+    uint32_t frames, bad;
+    APRS_RxCounts(&frames, &bad);
+    st->decoded = (uint16_t)frames;
+    st->bad_fcs = (uint16_t)bad;
+    st->sent = APRS_TxCount();
+    st->queue_free = APRS_StationMsgFree(&gStation);
+    st->acks_pending = APRS_StationAcksPending(&gStation);
+    st->why = APRS_TxWhy();
+    st->would_tx = st->why == APRS_R_OK;
+    st->busy = APRS_RxBusy() || (gEeprom.SQUELCH_LEVEL > 0 && FUNCTION_IsRx());
+    st->in_band = TX_freq_check(gTxVfo->pTX->Frequency) == 0;
+}
+
 static bool op_queue_raw(const uint8_t *frame, uint16_t len)
 {
     return APRS_StationQueueRaw(&gStation, frame, len);
@@ -393,6 +413,8 @@ const aprs_cmd_ops_t *APRS_TaskCmdOps(void)
         .get_digi_stats = op_digi_stats,
         .set_monitor = APRS_SerialSetMonitor,
         .queue_free = op_queue_free,
+        .get_status = op_get_status,
+        .monitoring = APRS_SerialMonitoringPort,
     };
     return &ops;
 }

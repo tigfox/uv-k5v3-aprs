@@ -37,7 +37,7 @@ static aprs_demod_t     gDemod;
 static aprs_rx_frame_t  gQueue[APRS_RX_QUEUE];
 static volatile uint8_t gHead, gTail;           /* ISR writes gHead, main writes gTail */
 static volatile bool    gRunning, gBusy, gPrimed, gHeld, gPaused;
-static volatile uint32_t gSamples, gFrames, gDropped;
+static volatile uint32_t gSamples, gFrames, gDropped, gBad;   /* gBad: damaged packets of earlier demodulator runs */
 static volatile uint32_t gCycMax, gCycSum, gCycN;
 
 static void bias_on(void)
@@ -89,7 +89,7 @@ void APRS_RxStart(void)
     APRS_DemodInit(&gDemod);
     gHead = gTail = 0;
     gBusy = gPrimed = gHeld = gPaused = false;
-    gSamples = gFrames = gDropped = gCycMax = gCycSum = gCycN = 0;
+    gSamples = gFrames = gDropped = gBad = gCycMax = gCycSum = gCycN = 0;
 
     bias_on();
     adc_select_pa4();
@@ -142,6 +142,7 @@ void APRS_RxResume(void)
 {
     if (!gRunning || !gPaused)
         return;
+    gBad += APRS_DemodBadFrames(&gDemod);          /* the demodulator starts afresh: keep what it counted */
     APRS_DemodInit(&gDemod);
     gPrimed = false;
     LL_TIM_SetCounter(TIM6, 0);
@@ -174,11 +175,20 @@ aprs_rx_stats_t APRS_RxStats(void)
     s.samples = gSamples;
     s.frames = gFrames;
     s.dropped = gDropped;
+    s.bad_fcs = gBad + APRS_DemodBadFrames(&gDemod);
     s.isr_cycles_max = gCycMax;
     s.isr_cycles_avg = gCycN ? gCycSum / gCycN : 0;
     gCycMax = gCycSum = gCycN = 0;
     __enable_irq();
     return s;
+}
+
+void APRS_RxCounts(uint32_t *frames, uint32_t *bad_fcs)
+{
+    __disable_irq();
+    *frames = gFrames;
+    *bad_fcs = gBad + APRS_DemodBadFrames(&gDemod);
+    __enable_irq();
 }
 
 void APRS_RxAdcAcquire(void)

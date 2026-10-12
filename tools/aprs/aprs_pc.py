@@ -493,10 +493,60 @@ def format_status(version, s: Settings, st: "DigiStatus | None") -> str:
     return "\n".join(lines)
 
 
+@dataclass(frozen=True)
+class RadioStatus:
+    monitoring: bool
+    would_tx: bool
+    busy: bool
+    in_band: bool
+    reason: str
+    battery_mv: int
+    decoded: int
+    freq_hz: int
+    bad_fcs: int
+    sent: int
+    queue_free: int
+    acks_pending: int
+
+
+def parse_status(r) -> "RadioStatus | None":
+    """The 0x0715 reply (header included), or None if it is not one."""
+    if r is None or len(r) < 24 or struct.unpack_from("<H", r)[0] != 0x0715 or r[4] != 1:
+        return None
+    flags, why = r[5], r[6]
+    mv, decoded, freq, bad, sent = struct.unpack_from("<HHIHH", r, 8)
+    return RadioStatus(monitoring=bool(flags & 1), would_tx=bool(flags & 2), busy=bool(flags & 4), in_band=bool(flags & 8),
+                       reason=REASONS[why] if why < len(REASONS) else f"?{why}", battery_mv=mv, decoded=decoded,
+                       freq_hz=freq * 10, bad_fcs=bad, sent=sent, queue_free=r[20], acks_pending=r[21])
+
+
+def format_radio_status(st: RadioStatus) -> str:
+    go = "would transmit now" if st.would_tx else f"would not transmit: {st.reason or 'unknown'}"
+    return (f"battery {st.battery_mv / 1000:.2f} V  frequency {st.freq_hz / 1e6:.6f} MHz "
+            f"({'in band' if st.in_band else 'OUT of band'})  {go}"
+            f"{'  channel busy' if st.busy else ''}\n"
+            f"decoded {st.decoded}  damaged {st.bad_fcs}  sent {st.sent}  queue {st.queue_free} free  "
+            f"acks waiting {st.acks_pending}  monitoring {'on' if st.monitoring else 'off'}")
+
+
+def cmd_radio_status(ser):
+    send_cmd(ser, 0x0714)
+    st = parse_status(read_reply(ser))
+    if st is None:
+        print("no status (an older firmware has no status command)")
+        return 1
+    print(format_radio_status(st))
+    return 0
+
+
 def cmd_status(ser, version):
     s = get_settings(ser)
     send_cmd(ser, 0x070A, bytes([0, 0, 0, 0, 0]))
     print(format_status(version, s, parse_digi_reply(read_reply(ser))))
+    send_cmd(ser, 0x0714)                               # newer firmware: the radio's own state; older ones do not answer
+    st = parse_status(read_reply(ser, timeout=0.5))
+    if st is not None:
+        print(format_radio_status(st))
     return 0
 
 

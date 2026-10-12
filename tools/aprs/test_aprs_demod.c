@@ -12,6 +12,7 @@ static int fails, checks;
 #define CHECK(c) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); } } while (0)
 
 static aprs_demod_t dm;   /* ~1.4 KB: keep it off the stack under the sanitizers */
+static uint32_t last_bad;  /* damaged packets seen in the last run() */
 
 typedef struct { char hex[2 * APRS_DEMOD_FRAME_MAX + 2]; } hexline_t;
 
@@ -40,6 +41,7 @@ static unsigned run(const uint16_t *s, size_t n, hexline_t *out, unsigned max, u
     }
     if (busy_samples)
         *busy_samples = busy;
+    last_bad = APRS_DemodBadFrames(&dm);
     return found;
 }
 
@@ -103,6 +105,11 @@ static int vectors(const char *dir)
         }
         if (!strcmp(truth, "none"))
             CHECK(found == 0);   /* a bad FCS must never be shown */
+        /* damaged packets: packet-shaped bursts that failed the FCS and were not decoded by another slicer. Only these three
+         * vectors contain one (the bad-FCS frame, the noisiest capture, and a burst ahead of the good frame in the -ppm one). */
+        const bool damaged = !strcmp(e->d_name, "flipper_badfcs.exp") || !strcmp(e->d_name, "flipper_noise4500.exp")
+                          || !strcmp(e->d_name, "flipper_long_ppm_neg.exp");
+        CHECK(last_bad == (damaged ? 1u : 0u));
     }
     closedir(d);
     printf("vectors: %d cases match the Python model; %d/%d decode the true frame\n", cases, truth_ok, truth_total);

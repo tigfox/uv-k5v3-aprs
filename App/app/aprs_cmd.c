@@ -175,6 +175,26 @@ uint16_t APRS_CmdRun(const aprs_cmd_ops_t *ops, uint32_t port, uint16_t id, cons
         reply[15] = 0;
         return 16;
     }
+    case 0x0714: {                  // the radio's state: no session, read-only
+        aprs_status_t st;
+        ops->get_status(&st);
+        wr16(reply, 0x0715);
+        wr16(reply + 2, 20);
+        reply[4] = 1;
+        reply[5] = (uint8_t)((ops->monitoring(port) ? 1u : 0u) | (st.would_tx ? 2u : 0u) | (st.busy ? 4u : 0u)
+                             | (st.in_band ? 8u : 0u));
+        reply[6] = (uint8_t)st.why;
+        reply[7] = 0;
+        wr16(reply + 8, st.battery_mv);
+        wr16(reply + 10, st.decoded);
+        wr32(reply + 12, st.freq_10hz);
+        wr16(reply + 16, st.bad_fcs);
+        wr16(reply + 18, st.sent);
+        reply[20] = st.queue_free;
+        reply[21] = st.acks_pending;
+        reply[22] = reply[23] = 0;
+        return 24;
+    }
     case 0x0710:
         if (size >= 1u)
             ops->set_monitor(port, d[0] != 0);

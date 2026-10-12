@@ -30,6 +30,9 @@ static aprs_reason_t st_queue_message(const char *to, const char *text, uint8_t 
     strcpy(q_to, to); strcpy(q_text, text); *seq = ++q_seq; return APRS_R_OK;
 }
 static uint8_t st_queue_free(void) { return q_free; }
+static aprs_status_t status_now;
+static void st_status(aprs_status_t *s) { *s = status_now; }
+static bool st_monitoring(uint32_t port) { return monitor_on && port == monitor_port; }
 static void st_queue_beacon(void) { beacons++; }
 static bool st_queue_raw(const uint8_t *f, uint16_t n)
 {
@@ -42,7 +45,7 @@ static void st_stats(uint16_t st[6], uint32_t *up) { for (int i = 0; i < 6; i++)
 static void st_monitor(uint32_t p, bool on) { monitor_port = p; monitor_on = on; monitor_calls++; }
 
 static const aprs_cmd_ops_t ops = { st_set_on, st_queue_message, st_queue_beacon, st_queue_raw, st_apply, st_get,
-                                    st_stats, st_monitor, st_queue_free };
+                                    st_stats, st_monitor, st_queue_free, st_status, st_monitoring };
 
 #define TS 0xA1B2C3D4u
 static uint8_t reply[APRS_CMD_REPLY_MAX];
@@ -67,6 +70,34 @@ static uint16_t run(uint16_t id, const uint8_t *d, uint16_t n, uint32_t ts)
 static uint16_t rid(void) { return (uint16_t)(reply[0] | (reply[1] << 8)); }
 static uint16_t rsize(void) { return (uint16_t)(reply[2] | (reply[3] << 8)); }
 
+static void test_status(void)
+{
+    reset();
+    memset(&status_now, 0, sizeof status_now);
+    status_now.battery_mv = 7420; status_now.freq_10hz = 14439000u; status_now.decoded = 258; status_now.bad_fcs = 7;
+    status_now.sent = 12; status_now.queue_free = 3; status_now.acks_pending = 1;
+    status_now.would_tx = true; status_now.in_band = true; status_now.busy = false; status_now.why = APRS_R_OK;
+    /* no session, no data */
+    CHECK(run(0x0714, NULL, 0, 0) == 4 + 20 && rid() == 0x0715 && rsize() == 20 && reply[4] == 1);
+    CHECK((reply[5] & 1) == 0);                                                  /* bit 0: monitoring on this port */
+    CHECK((reply[5] & 2) && !(reply[5] & 4) && (reply[5] & 8) && reply[6] == APRS_R_OK && reply[7] == 0);
+    CHECK((reply[8] | (reply[9] << 8)) == 7420 && (reply[10] | (reply[11] << 8)) == 258);
+    CHECK((uint32_t)(reply[12] | (reply[13] << 8) | (reply[14] << 16) | ((uint32_t)reply[15] << 24)) == 14439000u);
+    CHECK((reply[16] | (reply[17] << 8)) == 7 && (reply[18] | (reply[19] << 8)) == 12);
+    CHECK(reply[20] == 3 && reply[21] == 1 && reply[22] == 0 && reply[23] == 0);
+
+    /* it would not transmit: the reason, and the busy channel */
+    status_now.would_tx = false; status_now.in_band = false; status_now.busy = true; status_now.why = APRS_R_BAND;
+    CHECK(run(0x0714, NULL, 0, 0) == 4 + 20);
+    CHECK(!(reply[5] & 2) && (reply[5] & 4) && !(reply[5] & 8) && reply[6] == APRS_R_BAND);
+
+    /* monitoring is per port: this port (1) asked for it */
+    monitor_on = true; monitor_port = 1;
+    CHECK(run(0x0714, NULL, 0, 0) == 4 + 20 && (reply[5] & 1));
+    monitor_port = 2;
+    CHECK(run(0x0714, NULL, 0, 0) == 4 + 20 && !(reply[5] & 1));
+}
+
 static void test_capabilities(void)
 {
     reset();
@@ -74,7 +105,7 @@ static void test_capabilities(void)
     CHECK(reply[4] == 1 && reply[5] == APRS_PROTOCOL_REVISION && reply[6] == 0 && reply[7] == 0);
     const uint32_t features = (uint32_t)reply[8] | ((uint32_t)reply[9] << 8) | ((uint32_t)reply[10] << 16) | ((uint32_t)reply[11] << 24);
     CHECK(features == APRS_CAPS_FEATURES && (features & APRS_CAP_SEND_FIELDS) && (features & APRS_CAP_EVENTS));
-    CHECK((features & APRS_CAP_ACKQ) && (features & APRS_CAP_QUEUE));
+    CHECK((features & APRS_CAP_ACKQ) && (features & APRS_CAP_QUEUE) && (features & APRS_CAP_STATUS) && (features & APRS_CAP_COUNTERS));
     CHECK(reply[12] == APRS_MSGQ_DEPTH && reply[13] == APRS_ACKQ_DEPTH && reply[14] == APRS_MSG_TEXT_MAX && reply[15] == 0);
 }
 
@@ -264,7 +295,7 @@ static void test_monitor_and_unknown(void)
 
 int main(void)
 {
-    test_capabilities(); test_msg_beacon_on(); test_raw(); test_digi(); test_setup(); test_monitor_and_unknown();
+    test_capabilities(); test_status(); test_msg_beacon_on(); test_raw(); test_digi(); test_setup(); test_monitor_and_unknown();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;
 }
