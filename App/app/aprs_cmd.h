@@ -29,7 +29,8 @@
  * 0x0514 handshake, as the radio's other write commands do (otherwise Ok = 0). Replies are 4 bytes of header
  * (id + 1, size) then the body; the first byte of the body is Ok (1) unless noted.
  *
- *   0x0700 msg      [ts u32][to 10][text 30]      -> 0x0701   queue a message (new line number)
+ *   0x0700 msg      [ts u32][to 10][text 1..67]   -> 0x0701   queue a message (new line number); the text is the rest
+ *                                                         of the data (older hosts send a 30-byte padded field), refused above 67
  *   0x0702 beacon   [ts u32]                      -> 0x0703   queue the station beacon
  *   0x0706 on/off   [ts u32][on u8]               -> 0x0707
  *   0x0708 raw tx   [ts u32][AX.25 frame, no FCS] -> 0x0709   our own callsign as source only

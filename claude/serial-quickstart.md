@@ -64,7 +64,7 @@ affected by this: the radio sends these lines only to a program that asks for th
 ## 5. Send
 
 ```
-python3 aprs_pc.py PORT msg N0CALL-7 "hello from the ridge"   # an APRS message (30 characters)
+python3 aprs_pc.py PORT msg N0CALL-7 "hello from the ridge"   # an APRS message (up to 67 characters)
 python3 aprs_pc.py PORT beacon                                  # beacon now
 python3 aprs_pc.py PORT on        # or: off
 python3 aprs_pc.py PORT digi      # digipeater settings and counters

@@ -32,7 +32,7 @@ void APRS_EditBegin(aprs_edit_t *e, aprs_edit_kind_t kind)
     case APRS_EDIT_CALL:  e->max = APRS_CALL_MAX; break;
     case APRS_EDIT_LOC:   e->max = APRS_LOC_MAX; break;
     case APRS_EDIT_CMNT:  e->max = APRS_COMMENT_MAX; break;
-    case APRS_EDIT_MSG:   e->max = APRS_MSG_TEXT_MAX; break;
+    case APRS_EDIT_MSG:   e->max = APRS_MSG_EDIT_MAX; break;
     default:              e->max = APRS_MSGTO_MAX; break;
     }
     memset(e->buf, kind == APRS_EDIT_LOC ? '0' : blank_char(e), e->max);

@@ -283,7 +283,7 @@ static void test_messages(void)
     APRS_StationDrop(&st, &s, APRS_ACT_MSG);
     CHECK(!st.msg_pending);
     /* message text longer than the limit is cut */
-    char longtxt[60]; memset(longtxt, 'z', 59); longtxt[59] = 0;
+    char longtxt[100]; memset(longtxt, 'z', 99); longtxt[99] = 0;
     APRS_StationSetMsgText(&st, longtxt);
     CHECK(strlen(st.msg_text) == APRS_MSG_TEXT_MAX);
 }

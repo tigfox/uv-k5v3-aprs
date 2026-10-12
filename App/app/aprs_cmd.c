@@ -15,6 +15,7 @@
 
 
 #include "app/aprs_cmd.h"
+#include "app/aprs_msg.h"
 #include "app/aprs_ax25.h"
 #include "app/aprs_digi.h"
 #include <string.h>
@@ -94,11 +95,12 @@ uint16_t APRS_CmdRun(const aprs_cmd_ops_t *ops, uint32_t port, uint16_t id, cons
     aprs_settings_t s;
     switch (id) {
     case 0x0700: {
-        char to[10], text[31];
-        bool ok = size >= 4u + 10u + 30u && authed(d, size, port_ts);
+        char to[10], text[APRS_MSG_TEXT_MAX + 1];
+        const uint16_t text_len = size > 14u ? (uint16_t)(size - 14u) : 0u;    // whatever follows the destination
+        bool ok = text_len >= 1u && text_len <= APRS_MSG_TEXT_MAX && authed(d, size, port_ts);   // longer: refused, never cut
         if (ok) {
             memcpy(to, d + 4, 9);   to[9] = 0;
-            memcpy(text, d + 14, 30); text[30] = 0;
+            memcpy(text, d + 14, text_len); text[text_len] = 0;    // a NUL inside ends the text early
             ok = ops->queue_message(to, text);
         }
         return ack(reply, 0x0701, ok);

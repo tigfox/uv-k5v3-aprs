@@ -17,6 +17,7 @@
 
 #include "app/aprs_msg.h"
 #include "app/aprs_beacon.h"
+#include "app/aprs_ax25.h"
 
 uint8_t APRS_MsgNextSeq(uint8_t seq, bool changed)
 {
@@ -24,6 +25,10 @@ uint8_t APRS_MsgNextSeq(uint8_t seq, bool changed)
         return seq;
     return (uint8_t)(seq >= 99 ? 1 : seq + 1);
 }
+
+// the longest message: 30 bytes of header with the WIDE1-1,WIDE2-1 path, ":" + 9 + ":", the text, "{nn"
+_Static_assert(30u + 11u + APRS_MSG_TEXT_MAX + 3u + 2u <= APRS_BUILD_MAX, "a full message plus FCS must fit APRS_BUILD_MAX");
+_Static_assert(30u + 11u + APRS_MSG_TEXT_MAX + 3u + 2u <= APRS_RAWTX_MAX, "a full message plus FCS must fit the TX budget");
 
 static uint16_t build_addressed(uint8_t *out, const aprs_settings_t *s, const char *to,
                                 const char *text, uint8_t text_len)

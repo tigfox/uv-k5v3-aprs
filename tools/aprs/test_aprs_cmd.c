@@ -5,13 +5,14 @@
 #include "app/aprs_beacon.h"
 #include "app/aprs_cmd.h"
 #include "app/aprs_digi.h"
+#include "app/aprs_msg.h"
 
 static int fails, checks;
 #define CHECK(c) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); } } while (0)
 
 /* ---- the stub radio ---- */
 static aprs_settings_t cur;
-static char q_to[10], q_text[31];
+static char q_to[10], q_text[APRS_MSG_TEXT_MAX + 1];
 static int beacons, applied, raw_queued, monitor_calls;
 static bool on_state, monitor_on, raw_busy, apply_fails;
 static uint32_t monitor_port;
@@ -72,9 +73,32 @@ static void test_msg_beacon_on(void)
     reset();
     CHECK(run(0x0700, d, 44, TS + 1) == 8 && reply[4] == 0 && q_to[0] == 0);     /* wrong session */
     CHECK(run(0x0700, d, 44, 0) == 8 && reply[4] == 0);                          /* no session at all */
-    CHECK(run(0x0700, d, 43, TS) == 8 && reply[4] == 0);                         /* short */
+    CHECK(run(0x0700, d, 13, TS) == 8 && reply[4] == 0);                         /* too short for a destination and text */
+    CHECK(run(0x0700, d, 43, TS) == 8 && reply[4] == 1);                         /* a 29-character text is fine */
+    reset();
     memset(d + 14, 0, 30);
     CHECK(run(0x0700, d, 44, TS) == 8 && reply[4] == 0);                         /* empty text */
+
+    {   /* the text is whatever follows the destination, up to 67 characters (a 30-byte field from older hosts still works) */
+        uint8_t big[4 + 10 + 80];
+        memset(big, 0, sizeof big);
+        put32(big, TS);
+        strcpy((char *)big + 4, "N0CALL-7");
+        memset(big + 14, 'x', 67);
+        reset();
+        CHECK(run(0x0700, big, 4 + 10 + 67, TS) == 8 && reply[4] == 1 && strlen(q_text) == 67 && q_text[66] == 'x');
+        reset();
+        CHECK(run(0x0700, big, 4 + 10 + 68, TS) == 8 && reply[4] == 0 && q_to[0] == 0);   /* over 67: refused, never cut */
+        reset();
+        memset(big + 14, 0, 70);
+        big[14] = 'o'; big[15] = 'k';
+        CHECK(run(0x0700, big, 4 + 10 + 2, TS) == 8 && reply[4] == 1 && strcmp(q_text, "ok") == 0);   /* no padding needed */
+        reset();
+        memset(big + 14, 'y', 40); big[14 + 12] = 0;                                  /* a NUL ends the text early */
+        CHECK(run(0x0700, big, 4 + 10 + 40, TS) == 8 && reply[4] == 1 && strlen(q_text) == 12);
+        reset();
+        CHECK(run(0x0700, big, 4 + 10, TS) == 8 && reply[4] == 0);                    /* no text field at all */
+    }
 
     put32(d, TS);
     CHECK(run(0x0702, d, 4, TS) == 8 && rid() == 0x0703 && reply[4] == 1 && beacons == 1);

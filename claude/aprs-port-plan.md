@@ -482,6 +482,18 @@ packet box, serial commands, backlight wake, digi rate cap, red TX LED. User's c
 `~/Downloads/UV-K5-V3_calibration.dat`, 512 bytes, SHA-256
 `6c115906256a778ba6ee54ea6fed8113bf83498edb1d8459c09087d047b63909`.
 
+## Messages of up to 67 characters from the serial port (2026-10-11)
+
+`msg` (command `0x0700`) now takes 1 to 67 text bytes: the text is the rest of the command data (an older host that sends
+a 30-byte padded field still works; more than 67 bytes is refused, never cut). 67 is the APRS limit. The longest frame is
+111 bytes (30-byte header with WIDE1-1,WIDE2-1, `:` + 9 + `:`, 67, `{nn`), so `APRS_BUILD_MAX` went from 100 to 128 (static
+asserts against it and the 150-byte TX budget). The on-radio editor stays at 30 characters (`APRS_MSG_EDIT_MAX`; the edit
+buffer is smaller and typing 67 with arrow keys is not practical); `APRS_MSG_TEXT_MAX` (67) sizes the message buffer and
+what a host may send. The radio's own screen still shows at most 43 characters of a received message and the first two
+lines of a long outgoing one. `aprs_pc.py msg` refuses text over 67 bytes instead of cutting it. Host tests updated
+(`test_aprs_cmd`, `test_aprs_build`, `test_aprs_station`, `test_aprs_pc.py`); APRS preset builds: flash 106.31 KiB, RAM 14.13 KiB
+(+36 B flash, +72 B RAM). Not yet tried on a radio. Host API for other programs: `claude/aprs-messaging-api.md`.
+
 ## Open items
 
 - Whether the code generator and web beacon tools are wanted (step 8). With the arrow

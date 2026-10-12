@@ -21,8 +21,9 @@
 #include <stdint.h>
 #include "app/aprs_settings.h"
 
-#define APRS_MSG_TEXT_MAX  30u   // characters the operator may enter
-#define APRS_MSG_MAX       34u   // text + "{nn" / "ack" + line number
+#define APRS_MSG_TEXT_MAX  67u   // the APRS limit for a message text; what a host may send
+#define APRS_MSG_EDIT_MAX  30u   // what the operator types on the radio (arrow entry; the edit buffer is smaller than a message)
+#define APRS_MSG_MAX       (APRS_MSG_TEXT_MAX + 4u)   // text + "{nn" (+ room)
 #define APRS_ACK_SEQ_MAX    5u   // the spec allows up to 5 characters
 
 // The next line number (1..99). A message that changed gets a new one; sending the same text

@@ -25,9 +25,9 @@
 // (aprs.fi and friends resolve tocalls to a device name).
 #define APRS_TOCALL "APZK5"
 
-// Size of the buffers the builders fill: the longest frame is 93 bytes and the FCS goes in two
-// spare bytes after it, so callers pass at least this many.
-#define APRS_BUILD_MAX 100u
+// Size of the buffers the builders fill: the longest frame is a 67-character message, 111 bytes, and the FCS goes in
+// two spare bytes after it, so callers pass at least this many.
+#define APRS_BUILD_MAX 128u
 
 // Destination, source and path, control and PID. A MOBILE station asks for WIDE1-1,WIDE2-1;
 // a digipeater beacons direct (source is the last address). Returns the length.

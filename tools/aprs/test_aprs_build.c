@@ -108,11 +108,15 @@ static void test_messages(void)
     CHECK(strstr(tnc2(f, n), ":x{99") != NULL);
     CHECK(APRS_BuildMessage(f, &s, "", "hi", 1) == 0);
     CHECK(APRS_BuildMessage(f, &s, "K1A", "", 1) == 0);
-    {   /* longest text: 30 chars + {nn */
-        char t[40]; memset(t, 'y', 39); t[39] = 0;
+    {   /* longest text: 67 chars + {nn, with the longest header (WIDE1-1,WIDE2-1) it still fits the build buffer and the TX budget */
+        char t[100]; memset(t, 'y', 99); t[99] = 0;
         n = APRS_BuildMessage(f, &s, "ABCDEFGHI", t, 12);
-        CHECK(n <= APRS_BUILD_MAX);
-        CHECK(strstr(tnc2(f, n), "::ABCDEFGHI:yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy{12") != NULL);
+        CHECK(n <= APRS_BUILD_MAX && n + 2u <= APRS_RAWTX_MAX);
+        const char *want = "::ABCDEFGHI:yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy{12";
+        CHECK(strlen(want) == 2 + 9 + 1 + 67 + 3 && strstr(tnc2(f, n), want) != NULL);
+        char t67[68]; memset(t67, 'z', 67); t67[67] = 0;
+        n = APRS_BuildMessage(f, &s, "K1A", t67, 7);
+        CHECK(n <= APRS_BUILD_MAX && strstr(tnc2(f, n), "z{07") != NULL);
     }
     n = APRS_BuildAck(f, &s, "N0CALL-7", "42");
     CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1::N0CALL-7 :ack42");

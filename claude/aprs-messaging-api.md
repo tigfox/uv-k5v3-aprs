@@ -17,7 +17,7 @@ Reference client, usable as a library: `tools/aprs/aprs_pc.py` (`frame`, `send_c
 
 | It does | It does not |
 |---|---|
-| Accepts one message (destination + up to 30 characters) per command and transmits it on the radio's current frequency, from its own callsign-SSID. | Queue more than **one** message. A second `msg` before the first has gone out **replaces** it. |
+| Accepts one message (destination + up to 67 characters) per command and transmits it on the radio's current frequency, from its own callsign-SSID. | Queue more than **one** message. A second `msg` before the first has gone out **replaces** it. |
 | Sends it within about 0.5 s of the channel being quiet. | Tell the host that it has been sent, or that it was dropped. The command reply only means "queued". |
 | Waits at least **5 s** between its own transmissions. | Retry on its own when no ack comes. |
 | Gives up on any waiting transmission after **60 s** of a busy channel (all pending items are cleared, silently). | Report the line number it used for a message. |
@@ -94,10 +94,10 @@ Standard reply ("ack"): payload `id+1 u16`, `len u16 = 4`, `Ok u8`, 3 padding by
 |---|---|---|
 | 0 | 4 | `ts u32` |
 | 4 | 10 | destination, ASCII, NUL-terminated or NUL-padded; at most **9** characters are used. |
-| 14 | 30 | message text, NUL-terminated or NUL-padded; at most **30** characters. |
+| 14 | 1..67 | message text: **the rest of the data**, 1 to 67 bytes. A NUL byte ends the text early. |
 
-Data length is exactly 44. Reply `Ok = 1` means **queued**. `Ok = 0` means any of: wrong or missing `ts`; empty destination;
-empty text. (It does *not* check callsign, APRS on, or band: those drop the message later, silently.)
+Data length is `14 + n`, where `n` (1 to 67) is the number of text bytes; there is no padding requirement. Reply `Ok = 1` means **queued**. `Ok = 0` means any of: wrong or missing `ts`; empty destination;
+empty text; more than 67 text bytes. More than 67 text bytes is **refused**, not cut. (It does *not* check callsign, APRS on, or band: those drop the message later, silently.)
 
 On the air the packet is `:` + destination padded with spaces to 9 characters + `:` + text + `{nn`, where `nn` is a line
 number 01-99. The radio picks `nn`; it counts up by one for each message (99 wraps to 01) and **every `0x0700` gets a new
@@ -106,8 +106,14 @@ number, even if the text is identical**. There is no way to read the number back
 - Destination: upper case `A-Z 0-9` and `-` (callsign-SSID, e.g. `N0CALL-7`). The firmware does not validate it. The
   reference client upper-cases it.
 - Text: the firmware does not validate or filter it either; bytes go onto the air as given. Send **printable ASCII
-  `0x20-0x7E`** only, and avoid `{`, `|` and `~` (reserved in APRS message text). Anything over 30 bytes is **cut silently**:
+  `0x20-0x7E`** only, and avoid `{`, `|` and `~` (reserved in APRS message text). Anything over 67 bytes is **refused**:
   split longer text yourself, on character boundaries (UTF-8 multi-byte characters count per byte).
+
+**Older firmware.** Images built before the 67-character change (including the field-test image `f4hwn.aprs.bin` of
+2026-10-08) need the text field to be at least 30 bytes (data of at least 44 bytes) and **cut the text to 30 characters
+without saying so**. The command is otherwise the same. A client that must also work with that firmware should pad shorter text
+with NULs to 30 bytes (the reference client does) and keep a setting for the maximum text length (30 until the user says the
+radio has the newer firmware). The reply gives no way to tell which firmware is in the radio.
 
 ### 5.2 Read the settings: `0x070C`  ->  `0x070D`  (no data, no `ts`)
 
@@ -166,7 +172,7 @@ An **ack** for your message is such a frame **addressed to the radio's own calls
 2. `0x070C`: check `"APR1"`, APRS on, callsign not `N0CALL`. Report problems to the user before sending anything.
 3. Turn monitoring on (5.4) and keep reading continuously, in its own thread or task, so acks are not missed while sleeping.
 4. For each message in the batch, after normalising it (printable ASCII, upper-case destination) and splitting it into pieces of
-   at most 30 bytes:
+   at most 67 bytes:
    1. Wait until at least **6 s** have passed since the previous `0x0700` (the radio's own gap is 5 s).
    2. Send `0x0700`. `Ok = 0`: re-do the handshake once and retry; if it still fails, report it and stop.
    3. Wait for an ack from the destination's callsign-SSID (match on the source address of an `APRSRAW` frame addressed to
@@ -192,10 +198,10 @@ one (99 wraps to 1); a client may use that to detect a stale or duplicate ack, b
    digipeater repeat refused for those reasons; a refused message gives no line. Hence the pre-flight check and the ack timeout.
 5. **No delivery information** except the far station's ack. A message to a station that does not ack looks the same as one
    lost on the air.
-6. **Text** over 30 bytes is cut; the host splits. Characters are not filtered by the radio (section 5.1).
+6. **Text** over 67 bytes is refused; the host splits. Characters are not filtered by the radio (section 5.1).
 7. **Line numbers** run 01-99 and wrap; every serial message gets a new one. Retries are new messages.
 8. **Regulatory**: the radio transmits under the callsign stored in it. Whoever runs the batch is the control operator; keep
-   the rate sensible (30 characters every 6 s is the fastest this path can go) and do not message stations that have not
+   the rate sensible (67 characters every 6 s is the fastest this path can go) and do not message stations that have not
    agreed to it.
 
 ## 9. Error summary

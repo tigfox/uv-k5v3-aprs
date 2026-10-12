@@ -217,11 +217,21 @@ def test_msg_beacon_on_carry_the_timestamp():
     assert cmds[2] == (0x0706, ts + b"\x01")
 
 
-def test_msg_text_is_cut_to_30_and_the_target_to_9():
+def test_msg_target_is_cut_to_9_and_short_text_is_padded_to_30_for_older_firmware():
     radio = FakeRadio([reply(0x0701)])
-    aprs_pc.cmd_msg(radio, 1, "ABCDEFGHIJKL", "z" * 50)
+    aprs_pc.cmd_msg(radio, 1, "ABCDEFGHIJKL", "z" * 20)
     _, data = radio.commands()[0]
-    assert data[4:14] == b"ABCDEFGHI\x00" and data[14:] == b"z" * 30
+    assert data[4:14] == b"ABCDEFGHI\x00" and data[14:] == b"z" * 20 + b"\x00" * 10
+
+
+def test_msg_text_up_to_67_is_sent_whole_and_more_is_refused_not_cut(capsys):
+    radio = FakeRadio([reply(0x0701)])
+    assert aprs_pc.cmd_msg(radio, 1, "N0CALL-7", "z" * 67) == 0
+    _, data = radio.commands()[0]
+    assert data[14:] == b"z" * 67 and len(data) == 4 + 10 + 67
+    radio = FakeRadio([])
+    assert aprs_pc.cmd_msg(radio, 1, "N0CALL-7", "z" * 68) == 1
+    assert radio.commands() == [] and "67" in capsys.readouterr().out         # nothing is sent
 
 
 def test_raw_rejects_bad_hex_and_reports_refusal():

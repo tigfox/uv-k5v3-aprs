@@ -2,7 +2,7 @@
 """PC control for the APRS firmware (radio powered on, USB-C serial port or the K-plug cable).
 
   aprs_pc.py <port> status                    version, APRS settings, digipeater counters
-  aprs_pc.py <port> msg <TO> <text...>        queue an APRS message (30 characters)
+  aprs_pc.py <port> msg <TO> <text...>        queue an APRS message (up to 67 characters)
   aprs_pc.py <port> beacon                    queue the station beacon
   aprs_pc.py <port> on | off                  switch APRS on or off
   aprs_pc.py <port> raw <hex>                 transmit a raw AX.25 frame (no FCS); the source must be our callsign
@@ -340,12 +340,19 @@ def get_settings(ser) -> Settings:
     return unpack_record(bytes(r[8:8 + RECORD_SIZE]))
 
 
+MSG_TEXT_MAX = 67        # the APRS limit; firmware before that change accepted 30 and cut the rest
+MSG_TEXT_MIN_FIELD = 30  # a shorter text is still sent in a 30-byte padded field: older firmware needs it
+
+
 def cmd_msg(ser, ts, dest, text):
     dest_b = dest.upper().encode()[:9].ljust(10, b"\x00")
-    text_b = text.encode()[:30].ljust(30, b"\x00")
-    send_cmd(ser, 0x0700, struct.pack("<I", ts) + dest_b + text_b)
+    text_b = text.encode()
+    if len(text_b) > MSG_TEXT_MAX:
+        print(f"not sent: the text is {len(text_b)} bytes, the limit is {MSG_TEXT_MAX}")
+        return 1
+    send_cmd(ser, 0x0700, struct.pack("<I", ts) + dest_b + text_b.ljust(MSG_TEXT_MIN_FIELD, b"\x00"))
     if ack_ok(read_reply(ser), 0x0701):
-        print(f"queued: {dest.upper()} <- {text[:30]}")
+        print(f"queued: {dest.upper()} <- {text}")
         return 0
     print("not queued (callsign set? APRS on? destination and text given?)")
     return 1
