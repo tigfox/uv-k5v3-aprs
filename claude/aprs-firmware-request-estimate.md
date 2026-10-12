@@ -57,13 +57,31 @@ In the order I would remove them, by value lost per byte saved:
 
 Each also saves flash. That is about 0.5 KiB for the first four, more than enough for depth 8.
 
-## Questions for checkin-board
+## Questions for checkin-board (please answer in your reply)
 
-1. **Queue depth 4 or 8?** 4 is what fits without removing anything. Does a node ever need more than 4 messages in flight?
-2. **Frequency (9):** should the command put the radio in frequency mode on the given frequency, or change the frequency of the current memory channel? And must it stay inside 144-148 and 420-450 MHz?
-3. **Path (5):** one path for messages and acks (as written), or also for the station beacon?
-4. **RSSI (10):** is a separate `APRSRSSI:` line acceptable?
-5. **SENT (2):** "goes on air" is reported after the transmission ends (it is blocking, about 0.8 s); is that early enough?
+The estimate above holds for any answer. These answers change *what gets built*, or let me skip work. Where I list a default, I
+will build that if I hear nothing. Please reply with the question number and your choice; one line each is enough.
+
+| # | Question | Why it matters | Options | If no answer (default) | Blocks |
+|---|---|---|---|---|---|
+| Q1 | **How many messages must a node be able to have waiting in the radio at once?** | Each queued message costs about 80 bytes of the roughly 0.9 KiB of RAM that is left. | 4 / 8 / "more than 8" | **4** | request 4 (and the room left for the rest) |
+| Q2 | **What is the busiest burst a radio must clear, and how fast?** For example "20 runners arrive within 2 minutes at one checkpoint". | With the 5 s gap and acks sent first, one radio sends at most about 12 transmissions a minute. This tells me whether the gap setting (6) is a nicety or a requirement, and whether a depth of 4 is enough. | a number of messages and a time | keep 5 s as the default and allow 2-10 s | requests 4, 6 |
+| Q3 | **Will every radio be connected by USB-C only, never by the 2-pin K-plug cable?** | The K-plug cable's buffers are the last RAM I would give up (about 0.5 KiB), and the first choice if the queue needs to be deeper. | USB-C only / K-plug also used | **assume K-plug is still used**; nothing is removed | the "what could go" list |
+| Q4 | **Do you use the K5Viewer screen mirror, the scan progress bar, scan-range skipping or the RX/TX log on these radios?** | They are the cheapest things to remove for RAM and none is needed for messaging. | list which you use | none are removed unless RAM requires it, and then I ask again | the "what could go" list |
+| Q5 | **Frequency (request 9): when `stationsetup` sets a frequency, what should happen to the radio?** | The radio can be in frequency mode or on a memory channel; retuning in each case touches different code. | (a) switch to frequency mode and set it; (b) change the frequency of the current memory channel; (c) not needed: operators set it on the radio | **(c)**, and 9 is built last | request 9 |
+| Q6 | **Which frequencies must be allowed?** | The firmware transmits only inside 144-148 and 420-450 MHz. Should the command refuse anything outside, as the radio does? | refuse outside (as now) / other | refuse outside | request 9 |
+| Q7 | **Digipeater path (request 5): should the setting apply to messages and acks only, or to the station beacon too?** | Beacons today use "WIDE1-1,WIDE2-1" for a mobile station and go direct for a digipeater. | messages + acks only / also beacons | **messages + acks only** | request 5 |
+| Q8 | **Is a separate `APRSRSSI:<dBm>` line (after the matching `APRSRAW:` line) acceptable, instead of appending to the `APRSRAW:` line?** | A hex-only parser reading the whole `APRSRAW:` line would break on an appended field. | separate line / appended (host must tolerate) | **separate line** | request 10 |
+| Q9 | **Is "SENT" reported when the transmission has finished (about 0.8 s after it starts) early enough?** | The radio blocks while it transmits; the line cannot be written before it ends. | yes / need it at the start | **after it ends** | request 2 |
+| Q10 | **When a send is refused because the queue is full, is `Ok = 0` with reason "full" in the reply enough, or do you also want a monitor line?** | Both cost little; I would rather not add lines nobody reads. | reply only / also a `DROP:` line | **reply only** | requests 1, 4 |
+| Q11 | **Is a protocol revision number plus feature bits enough for request 0, or do you need version strings of the firmware too?** | A bit field is smaller and easier to test against; the firmware version string is already in the handshake. | revision + bits / also a string | **revision + bits** | request 0 |
+| Q12 | **Which requests should ship first if they cannot all land together?** | I plan: 0, 1, 2 and the reason codes; then 3 and 4; then 7, 10, 11; then 5, 6, 8; then 9. Say if your race schedule wants a different order. | reorder | the order in the effort list | all |
+
+**Please also confirm two assumptions I made from your document:**
+
+- A node that serves as HQ will also **send** (acks and replies), so the pending-ack list (request 3) and the queue (request 4) both apply to it.
+- **Retries stay in the host**: the radio will not resend an unacknowledged message, and a retry is a new message with a new line
+  number (as the current firmware behaves).
 
 ## Compatibility
 
