@@ -601,6 +601,8 @@ void MENU_AcceptSetting(void)
         case MENU_APRS_DIGI ... MENU_APRS_BCNTY:
         case MENU_APRS_INTV:
         case MENU_APRS_SSID:
+        case MENU_APRS_PATH:
+        case MENU_APRS_GAP:
             {
                 const aprs_settings_t n = APRS_ItemSet(&gAprsSettings, (unsigned)(menu_id - MENU_APRS_FIRST),
                                                        gSubMenuSelection);

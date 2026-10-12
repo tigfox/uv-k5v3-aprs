@@ -11,5 +11,7 @@
   "msgto": "",
   "loc": "",
   "tone_level": 66,
-  "tone_twist": 0
+  "tone_twist": 0,
+  "path": "WIDE1-1,WIDE2-1",
+  "gap_s": 5
 }

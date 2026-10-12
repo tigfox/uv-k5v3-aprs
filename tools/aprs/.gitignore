@@ -14,3 +14,4 @@ test_aprs_cmd
 __pycache__
 .pytest_cache
 test_aprs_reason
+test_aprs_monitor

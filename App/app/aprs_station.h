@@ -74,7 +74,7 @@ typedef struct {
 } aprs_station_t;
 
 #define APRS_PENDING_MAX_SLOTS 120u    /* a request the channel kept busy for a minute is given up (reported as `busy`) */
-#define APRS_TX_MIN_GAP_SLOTS  10u     /* at least 5 s between our transmissions, whoever asks */
+#define APRS_TX_MIN_GAP_SLOTS  APRS_GAP_DEFAULT_SLOTS   /* at least 5 s between our transmissions, whoever asks (the Gap setting: 2-10 s) */
 
 /* Where SENT / DROP events go (NULL: nowhere). The task points it at the serial monitor. */
 typedef void (*aprs_event_sink_t)(const aprs_event_t *e);

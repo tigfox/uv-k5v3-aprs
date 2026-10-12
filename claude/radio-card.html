@@ -117,7 +117,7 @@ footer { border-top: 1px solid var(--rule); padding-top: var(--s-2); color: var(
           <tr><td><span class="m">22</span> RdMsg</td><td><span class="m">23</span> BatSav</td><td><span class="m">24</span> BatTyp</td></tr>
           <tr><td><span class="m">25</span> BatTxt</td><td><span class="m">26</span> KeyLck</td><td></td></tr>
         </table></div>
-        <p class="note">Everything else in the radio is set with a programming cable (UV Studio / CHIRP). The numbers follow this list, so check the on-screen count (<code>NN/26</code>) if one looks off.</p>
+        <p class="note">Everything else in the radio is set with a programming cable (UV Studio / CHIRP). The numbers follow this list, so check the on-screen count (<code>NN/28</code>) if one looks off. <strong>Path</strong> and <strong>Gap</strong> are two items added after <span class="m">BEACON</span>; the numbers of the items after them moved up by two, so go by the names.</p>
       </div>
     </div>
     <div class="box">
@@ -173,7 +173,7 @@ footer { border-top: 1px solid var(--rule); padding-top: var(--s-2); color: var(
     <h2><span class="n">D</span> Send a message</h2>
     <ol class="steps">
       <li><div><span class="m">12 MsgTo</span>: who to (<code>N0CALL-7</code>). After a message arrives this already holds the sender.</div></li>
-      <li><div><span class="m">13 Msg</span>: the text (30 characters).</div></li>
+      <li><div><span class="m">13 Msg</span>: the text (30 characters here; a program on the USB port can send 67).</div></li>
       <li><div><span class="m">14 Send</span>: <kbd>MENU</kbd>, <kbd>▲</kbd> to <span class="v">SEND</span>, <kbd>MENU</kbd>. It goes out within half a second when the channel is quiet. Sending the same text again is a retry (same line number); changing it gives a new number.</div></li>
     </ol>
   </section>
@@ -192,6 +192,8 @@ footer { border-top: 1px solid var(--rule); padding-top: var(--s-2); color: var(
       <tr><td><span class="m">05 BcnTy</span></td><td><span class="v">DIGI</span></td><td>Beacons as a digipeater (<code>/#</code>) with no repeat-me path.</td><td class="blank"><span></span></td></tr>
       <tr><td><span class="m">10 Loc</span></td><td>15 digits or none</td><td>Position code from <code>aprs_pc.py loc LAT LON</code>. With none, the beacon is a status packet: it still identifies the station.</td><td class="blank"><span></span></td></tr>
       <tr><td><span class="m">11 Cmnt</span></td><td>text</td><td>Beacon comment.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">Path</span></td><td><span class="v">WIDE1-1 WIDE2-1</span></td><td>The digipeater path of <strong>messages and acks</strong> (beacons keep their own). <span class="v">WIDE1-1</span> is repeated by one hop, <span class="v">DIRECT</span> by none: on a shared frequency where everyone hears everyone, DIRECT keeps race traffic off the other digipeaters.</td><td class="blank"><span></span></td></tr>
+      <tr><td><span class="m">Gap</span></td><td><span class="v">5s</span></td><td>The shortest time between two of the radio's own transmissions (2, 3, 4, 5, 6, 8 or 10 s). Lower clears a backlog faster; leave a gap long enough for acks.</td><td class="blank"><span></span></td></tr>
       <tr><td><span class="m">07 Intv</span></td><td><span class="v">10 min</span></td><td>Beacon interval (OFF, 1, 2, 5, 10, 15, 30, 60 min). First one 15 s after APRS goes on. The beacon is also your station ID: meet your licence's rule.</td><td class="blank"><span></span></td></tr>
     </table></div>
     <p class="note">The digi never repeats under <code>N0CALL</code>, its own call-SSID, a duplicate within 30 s, or more than 20 repeats a minute. It is deaf for about a second while it transmits.</p>

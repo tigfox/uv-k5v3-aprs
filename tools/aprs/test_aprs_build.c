@@ -106,6 +106,27 @@ static void test_messages(void)
     CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1::K1A      :hi");
     n = APRS_BuildMessage(f, &s, "K1A", "x", 99);
     CHECK(strstr(tnc2(f, n), ":x{99") != NULL);
+    /* the digipeater path of messages and acks is a setting; the default is what it always was */
+    s.msg_path = APRS_PATH_WIDE1;
+    n = APRS_BuildMessage(f, &s, "N0CALL-7", "hello", 5);
+    CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1::N0CALL-7 :hello{05");
+    uint16_t n_wide1 = n;
+    n = APRS_BuildAck(f, &s, "N0CALL-7", "42");
+    CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1::N0CALL-7 :ack42");
+    s.msg_path = APRS_PATH_DIRECT;
+    n = APRS_BuildMessage(f, &s, "N0CALL-7", "hello", 5);
+    CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5::N0CALL-7 :hello{05");
+    CHECK(n + 7u == n_wide1);                                      /* one digipeater address less */
+    n = APRS_BuildAck(f, &s, "N0CALL-7", "42");
+    CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5::N0CALL-7 :ack42");
+    s.msg_path = APRS_PATH_WIDE12;
+    n = APRS_BuildMessage(f, &s, "N0CALL-7", "hello", 5);
+    CHECK_STR(tnc2(f, n), "W1ABC-7>APZK5,WIDE1-1,WIDE2-1::N0CALL-7 :hello{05");
+    /* ... and the beacon does not follow it */
+    s.msg_path = APRS_PATH_DIRECT; s.beacon_type = 0;
+    n = APRS_BuildStatusBeacon(f, &s);
+    CHECK(strstr(tnc2(f, n), "APZK5,WIDE1-1,WIDE2-1:>") != NULL);
+    s.msg_path = APRS_PATH_WIDE12;
     CHECK(APRS_BuildMessage(f, &s, "", "hi", 1) == 0);
     CHECK(APRS_BuildMessage(f, &s, "K1A", "", 1) == 0);
     {   /* longest text: 67 chars + {nn, with the longest header (WIDE1-1,WIDE2-1) it still fits the build buffer and the TX budget */

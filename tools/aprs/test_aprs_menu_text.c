@@ -30,6 +30,15 @@ int main(void)
     is(&s, APRS_MI_CMNT, "");
     is(&s, APRS_MI_MSGTO, "");
     is(&s, APRS_MI_SEND, "N/A");
+    is(&s, APRS_MI_PATH, "WIDE1-1\nWIDE2-1");             /* the default: what earlier firmware always sent */
+    is(&s, APRS_MI_GAP, "5s");
+    s.msg_path = APRS_PATH_WIDE1;  is(&s, APRS_MI_PATH, "WIDE1-1");
+    s.msg_path = APRS_PATH_DIRECT; is(&s, APRS_MI_PATH, "DIRECT");
+    s.tx_gap = 4;  is(&s, APRS_MI_GAP, "2s");
+    s.tx_gap = 12; is(&s, APRS_MI_GAP, "6s");
+    s.tx_gap = 20; is(&s, APRS_MI_GAP, "10s");
+    s.tx_gap = 9;  is(&s, APRS_MI_GAP, "4.5s");            /* set by cable: half-seconds are shown */
+    s.msg_path = 0; s.tx_gap = 0;
     s.aprs_on = 1; s.digi_mode = APRS_DIGI_WIDE; s.digi_hops = 3; s.digi_delay = 3; s.beacon_type = 1;
     s.interval_s = 90; s.ssid = 15;
     strcpy(s.call, "W1ABC"); strcpy(s.loc, "123456789012345");

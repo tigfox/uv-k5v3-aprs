@@ -10,7 +10,7 @@
 enum {
     OFF_MAGIC = 0, OFF_VERSION = 4, OFF_FLAGS = 5, OFF_DIGI = 6, OFF_SSID = 7,
     OFF_INTERVAL = 8, OFF_LEVEL = 10, OFF_TWIST = 11, OFF_CALL = 12, OFF_MSGTO = 20,
-    OFF_LOC = 30, OFF_COMMENT = 46, OFF_CRC = 90, OFF_SPARE = 92,
+    OFF_LOC = 30, OFF_COMMENT = 46, OFF_CRC = 90, OFF_PATH = 92, OFF_GAP = 93, OFF_SPARE = 94,
 };
 
 #define DEFAULT_INTERVAL_S 600u
@@ -25,6 +25,21 @@ static uint16_t crc16(const uint8_t *p, unsigned n)   /* CCITT-FALSE */
             crc = (crc & 0x8000) ? (uint16_t)((crc << 1) ^ 0x1021) : (uint16_t)(crc << 1);
     }
     return crc;
+}
+
+/* The record's checksum. It covers bytes 0..89; when path or gap is set it covers bytes 92 and 93 as well. With both at the
+ * default (zero) that is the very checksum earlier firmware wrote, so records saved before these fields still decode, and a bit
+ * flip in the new bytes is still caught. */
+static uint16_t record_crc(const uint8_t *r)
+{
+    uint8_t cover[OFF_CRC + 2];
+    memcpy(cover, r, OFF_CRC);
+    unsigned n = OFF_CRC;
+    if (r[OFF_PATH] || r[OFF_GAP]) {
+        cover[n++] = r[OFF_PATH];
+        cover[n++] = r[OFF_GAP];
+    }
+    return crc16(cover, n);
 }
 
 /* A NUL-terminated string within cap bytes whose chars satisfy ok(). */
@@ -80,6 +95,8 @@ bool APRS_SettingsValid(const aprs_settings_t *s)
         && s->digi_hops >= 1 && s->digi_hops <= APRS_DIGI_HOPS_MAX
         && s->digi_delay < APRS_DIGI_DELAYS
         && s->beacon_type <= 1
+        && s->msg_path <= APRS_PATH_DIRECT
+        && (s->tx_gap == 0 || (s->tx_gap >= APRS_GAP_MIN_SLOTS && s->tx_gap <= APRS_GAP_MAX_SLOTS))
         && s->tone_level >= APRS_TONE_LEVEL_MIN && s->tone_level <= APRS_TONE_LEVEL_MAX
         && s->tone_twist >= APRS_TWIST_MIN && s->tone_twist <= APRS_TWIST_MAX;
 }
@@ -96,6 +113,11 @@ bool APRS_CallIsSet(const aprs_settings_t *s)
         if (s->call[i] >= '0' && s->call[i] <= '9') digits++; else letters++;
     }
     return n >= 3 && digits > 0 && letters > 0 && strcmp(s->call, "N0CALL") != 0 && strcmp(s->call, "NOCALL") != 0;
+}
+
+uint8_t APRS_GapSlots(const aprs_settings_t *s)
+{
+    return s->tx_gap ? s->tx_gap : (uint8_t)APRS_GAP_DEFAULT_SLOTS;
 }
 
 uint8_t APRS_DigiByteEncode(const aprs_settings_t *s)
@@ -135,7 +157,9 @@ bool APRS_SettingsEncode(const aprs_settings_t *s, uint8_t out[APRS_RECORD_SIZE]
     put_text(r + OFF_MSGTO, s->msgto, sizeof s->msgto);
     put_text(r + OFF_LOC, s->loc, sizeof s->loc);
     put_text(r + OFF_COMMENT, s->comment, sizeof s->comment);
-    uint16_t crc = crc16(r, OFF_CRC);
+    r[OFF_PATH] = s->msg_path;
+    r[OFF_GAP] = s->tx_gap;
+    uint16_t crc = record_crc(r);
     r[OFF_CRC] = (uint8_t)(crc & 0xFF);
     r[OFF_CRC + 1] = (uint8_t)(crc >> 8);
     memcpy(out, r, sizeof r);
@@ -152,7 +176,7 @@ bool APRS_SettingsDecode(const uint8_t in[APRS_RECORD_SIZE], aprs_settings_t *ou
         ok = in[i] == 0;
     if (ok) {
         uint16_t crc = (uint16_t)(in[OFF_CRC] | (in[OFF_CRC + 1] << 8));
-        ok = crc == crc16(in, OFF_CRC);
+        ok = crc == record_crc(in);
     }
     if (ok) {
         s.aprs_on = in[OFF_FLAGS];
@@ -160,6 +184,8 @@ bool APRS_SettingsDecode(const uint8_t in[APRS_RECORD_SIZE], aprs_settings_t *ou
         s.interval_s = (uint16_t)(in[OFF_INTERVAL] | (in[OFF_INTERVAL + 1] << 8));
         s.tone_level = in[OFF_LEVEL];
         s.tone_twist = (int8_t)in[OFF_TWIST];
+        s.msg_path = in[OFF_PATH];
+        s.tx_gap = in[OFF_GAP];
         memcpy(s.call, in + OFF_CALL, sizeof s.call);
         memcpy(s.msgto, in + OFF_MSGTO, sizeof s.msgto);
         memcpy(s.loc, in + OFF_LOC, sizeof s.loc);

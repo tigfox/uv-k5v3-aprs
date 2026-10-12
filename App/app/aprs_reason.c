@@ -18,7 +18,7 @@
 #include <string.h>
 
 static const char *const TEXT[] = {
-    "", "full", "session", "empty", "toolong", "busy", "nocall", "aprsoff", "band", "battery", "mode", "replaced", "off"
+    "", "full", "session", "empty", "toolong", "busy", "nocall", "aprsoff", "band", "battery", "mode", "replaced", "off", "invalid", "store"
 };
 
 const char *APRS_ReasonText(uint8_t reason)

@@ -27,6 +27,7 @@
 #include "app/aprs_store.h"
 #include "audio.h"
 #include "driver/aprs_rx.h"
+#include "driver/bk4819.h"
 #include "driver/aprs_tx.h"
 #include "frequencies.h"
 #include "functions.h"
@@ -218,9 +219,30 @@ static void box_show(const aprs_rx_info_t *info)
     gBoxSticky = info->to_me;
 }
 
+/* The signal strength of the packet being received: the highest reading while the demodulator says a packet is arriving (every
+ * 10 ms, one register read), kept until the frame is handed over. The frame itself is only popped after it has ended. */
+static int16_t gRssiPeak = APRS_NO_RSSI;
+
+static void sample_rssi(void)
+{
+    if (!APRS_SerialMonitoring() || !APRS_RxBusy())
+        return;                                    // nobody reads it, or no packet is arriving
+    const int16_t r = BK4819_GetRSSI_dBm();
+    if (gRssiPeak == APRS_NO_RSSI || r > gRssiPeak)
+        gRssiPeak = r;
+}
+
+static int16_t take_rssi(void)
+{
+    const int16_t r = gRssiPeak;
+    gRssiPeak = APRS_NO_RSSI;
+    return r;
+}
+
 /* One decoded frame: count it, remember who, show it, tell the station, and beep (three times for a message to us). */
 static void on_frame(const aprs_rx_frame_t *f)
 {
+    const int16_t rssi = take_rssi();          // once per frame, shown or not, so a reading never goes to the next one
     aprs_rx_info_t info;
     gStat.heard++;
     if (f->len >= 17u)
@@ -232,7 +254,7 @@ static void on_frame(const aprs_rx_frame_t *f)
         gLastRpt = false;
         gHaveLast = true;
         box_show(&info);
-        APRS_SerialFrame(f->data, f->len, info.text);
+        APRS_SerialFrame(f->data, f->len, info.text, rssi);
         if (info.to_me)
             BACKLIGHT_TurnOn();       // a message to us: make sure it can be seen
         AUDIO_PlayBeep(info.to_me ? BEEP_880HZ_60MS_TRIPLE_BEEP : BEEP_1KHZ_60MS_OPTIONAL);
@@ -312,6 +334,7 @@ void APRS_Task10ms(void)
         on_frame(&f);
 
     gTicks++;
+    sample_rssi();
     digi_poll();
     if (gTicks % TICKS_PER_SLOT == 0) {
         transmit_slot();

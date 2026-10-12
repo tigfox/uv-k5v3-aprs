@@ -3,7 +3,7 @@ CFLAGS = -std=c11 -Wall -Wextra -Werror -I../../App -O1 -g -fsanitize=address,un
 CORE = $(addprefix ../../App/app/, aprs_ax25.c aprs_beacon.c aprs_digi.c aprs_lastheard.c aprs_msg.c aprs_parse.c aprs_text.c aprs_settings.c)
 SRC = ../../App/app/aprs_settings.c
 
-test: test_aprs_settings test_aprs_bands test_aprs_menu_text test_aprs_core test_aprs_build test_aprs_demod test_aprs_modem test_aprs_edit test_aprs_station test_aprs_cmd test_aprs_reason vectors
+test: test_aprs_settings test_aprs_bands test_aprs_menu_text test_aprs_core test_aprs_build test_aprs_demod test_aprs_modem test_aprs_edit test_aprs_station test_aprs_cmd test_aprs_reason test_aprs_monitor vectors
 	./test_aprs_settings
 	./test_aprs_bands
 	./test_aprs_menu_text
@@ -15,6 +15,7 @@ test: test_aprs_settings test_aprs_bands test_aprs_menu_text test_aprs_core test
 	./test_aprs_station
 	./test_aprs_cmd
 	./test_aprs_reason
+	./test_aprs_monitor
 	python3 -m pytest -q test_aprs_pc.py
 
 test_aprs_settings: test_aprs_settings.c $(SRC)
@@ -27,6 +28,9 @@ test_aprs_menu_text: test_aprs_menu_text.c ../../App/app/aprs_menu_text.c ../../
 	$(CC) $(CFLAGS) -o $@ $^
 
 test_aprs_reason: test_aprs_reason.c ../../App/app/aprs_reason.c
+	$(CC) $(CFLAGS) -o $@ $^
+
+test_aprs_monitor: test_aprs_monitor.c ../../App/app/aprs_monitor.c ../../App/app/aprs_ax25.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 test_aprs_core: test_aprs_core.c $(CORE)

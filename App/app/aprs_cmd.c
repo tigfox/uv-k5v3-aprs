@@ -195,6 +195,32 @@ uint16_t APRS_CmdRun(const aprs_cmd_ops_t *ops, uint32_t port, uint16_t id, cons
         reply[22] = reply[23] = 0;
         return 24;
     }
+    case 0x0716: {                  // the callsign and SSID alone, so a host need not round-trip the whole record
+        aprs_reason_t why = APRS_R_OK;
+        aprs_settings_t s;
+        if (!authed(d, size, port_ts)) {
+            why = APRS_R_SESSION;
+        } else if (size != 4u + 8u + 1u) {
+            why = APRS_R_INVALID;
+        } else {
+            ops->get_settings(&s);
+            memset(s.call, 0, sizeof s.call);
+            memcpy(s.call, d + 4, APRS_CALL_MAX);                   // six characters; the two bytes after them must be padding
+            const bool padded = d[4 + APRS_CALL_MAX] == 0 && d[4 + APRS_CALL_MAX + 1] == 0;
+            s.ssid = d[12];
+            if (!padded || !APRS_SettingsValid(&s) || s.call[0] == 0) {
+                why = APRS_R_INVALID;
+            } else {
+                aprs_settings_t cur;
+                ops->get_settings(&cur);
+                if (strcmp(cur.call, s.call) != 0 || cur.ssid != s.ssid)       // save only what changes: flash wears
+                    why = ops->apply_settings(&s) ? APRS_R_OK : APRS_R_STORE;
+            }
+        }
+        const uint16_t n = ack(reply, 0x0717, why == APRS_R_OK);
+        reply[7] = (uint8_t)why;
+        return n;
+    }
     case 0x0710:
         if (size >= 1u)
             ops->set_monitor(port, d[0] != 0);

@@ -86,6 +86,16 @@ void APRS_MenuText(const aprs_settings_t *s, unsigned item, char *out, size_t n)
     case APRS_MI_CMNT:   put_two_lines(&k, s->comment); break;
     case APRS_MI_MSGTO:  put_str(&k, s->msgto); break;
     case APRS_MI_BEACON: put_str(&k, "NO"); break;     /* an action: the menu shows SEND while editing */
+    case APRS_MI_PATH:
+        put_str(&k, s->msg_path == APRS_PATH_DIRECT ? "DIRECT" : s->msg_path == APRS_PATH_WIDE1 ? "WIDE1-1" : "WIDE1-1\nWIDE2-1");
+        break;
+    case APRS_MI_GAP: {
+        const unsigned half = s->tx_gap ? s->tx_gap : APRS_GAP_DEFAULT_SLOTS;      // half-seconds
+        put_uint(&k, half / 2u);
+        if (half & 1u) put_str(&k, ".5");
+        put_char(&k, 's');
+        break;
+    }
     default:             put_str(&k, "N/A"); break;   /* Msg, Send, RdMsg: not wired yet */
     }
     *k.p = '\0';

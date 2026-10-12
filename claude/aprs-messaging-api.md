@@ -6,8 +6,8 @@ Audience: the author of a program that sends batches of short APRS messages thro
 Revision 2 (firmware **protocol revision 1**, read it with `0x0712`; section 5.6): the radio now keeps a **queue of 4 messages**
 and **4 pending acks**, the send reply carries the **line number, free queue places and a reason code**, the monitor prints
 **`SENT:` / `DROP:` lines**, and a refused message says why. A full queue refuses and never replaces. Earlier revision (2026-10-11):
-message text is 1 to 67 characters (was 30); over 67 is refused. Features of a later revision (status command, set callsign,
-digipeater path, gap, signal strength) are listed in section 10 and are **not in the firmware yet**; the capability bits tell you.
+message text is 1 to 67 characters (was 30); over 67 is refused. Also in revision 1: a status command (5.8), set callsign and SSID (5.9), a digipeater-path
+setting and a transmit-gap setting (5.2), `APRSRSSI:` signal-strength lines (6) and frame counters. The capability bits (5.6) say which a given radio has.
 
 Status: written from the firmware source (`App/app/aprs_cmd.c`, `aprs_station.c`, `aprs_serial.c`, `aprs_rxinfo.c`,
 `aprs_msg.c`) and the working reference client `tools/aprs/aprs_pc.py` (host-tested in `tools/aprs/test_aprs_pc.py`). The
@@ -166,8 +166,28 @@ inside the record):
 | 7 | 1 | SSID 0-15 |
 | 12 | 8 | callsign, NUL-terminated, 1-6 characters `A-Z 0-9`. `N0CALL` is the placeholder: not configured. |
 | 20 | 10 | the radio's current message target (not needed) |
+| 92 | 1 | path of messages and acks: 0 = `WIDE1-1,WIDE2-1` (the default, and what every earlier firmware sent), 1 = `WIDE1-1`, 2 = direct (no digipeater) |
+| 93 | 1 | the shortest gap between the radio's own transmissions in half-seconds: 0 = the default (5 s), otherwise 4 to 20 (2 to 10 s) |
+| 94 | 2 | zero |
 
-The record's CRC (offset 90, CRC-16/CCITT-FALSE over bytes 0-89) is checked by the reference `unpack_record`.
+Worked example: the record for call `W1ABC`, SSID 7, APRS on, 10 min interval, digipeater WIDE (hops 2, no delay, beacon type DIGI), tone level 66,
+twist -2, message target `N0CALL-7`, comment `Ridge digi`, with **path direct and a 6 s gap** (bytes 92-93 = `02 0c`, CRC `1f7a` stored `7a 1f`):
+
+```
+41 50 52 31 01 01 8a 07 58 02 42 fe 57 31 41 42
+43 00 00 00 4e 30 43 41 4c 4c 2d 37 00 00 31 33
+30 37 31 32 38 31 30 35 39 39 34 30 35 00 52 69
+64 67 65 20 64 69 67 69 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 7a 1f 02 0c 00 00
+```
+
+With the defaults the same settings give the same record with bytes 92-93 zero and CRC `a2b1`; that record is also what earlier firmware wrote.
+
+The record's CRC (offset 90, CRC-16/CCITT-FALSE) covers bytes 0-89, **and bytes 92 and 93 as well when either is non-zero**. With the
+defaults (both zero) it is exactly the CRC earlier firmware wrote, so a record saved before these fields existed is still good, and a
+bit flip in the new bytes is still caught. The reference `unpack_record` checks it. A firmware older than these fields rejects a record
+with non-zero bytes 92-93 and falls back to its defaults: do not write one to a radio you may downgrade.
 
 ### 5.3 APRS on/off: `0x0706`  ->  `0x0707`
 
@@ -197,10 +217,13 @@ Reply data (12 bytes): `Ok u8`, `revision u8`, 2 padding bytes, `features u32`, 
 | 2 | `acks` | several acks can wait (`ack_depth`) |
 | 3 | `queue` | several messages can wait (`queue_depth`); a full queue refuses |
 | 4 | `status` | the status command (5.8) |
-| 5-8 | | reserved for features still to come (section 10) |
+| 5 | `set-call` | the set callsign command (5.9) |
+| 6 | `path` | the digipeater path setting for messages and acks (5.2) |
+| 7 | `gap` | the setting for the shortest gap between transmissions (5.2) |
+| 8 | `rssi` | `APRSRSSI:` lines (6) |
 | 9 | `counters` | the frame counters in the status reply |
 
-Revision 1 is: bits 0-4 and 9 set (`features = 0x21f`), `queue_depth` 4, `ack_depth` 4, `max_text` 67. Later bits and revisions are added; ignore bits you do not know.
+Revision 1 is: bits 0-9 all set (`features = 0x3ff`), `queue_depth` 4, `ack_depth` 4, `max_text` 67. Later bits and revisions are added; ignore bits you do not know.
 
 ### 5.7 Reason codes (one table: the send reply, `DROP:` lines and the status command)
 
@@ -219,6 +242,8 @@ Revision 1 is: bits 0-4 and 9 set (`features = 0x21f`), `queue_depth` 4, `ack_de
 | 10 | `mode` | the TX VFO is not FM |
 | 11 | `replaced` | reserved: this firmware never replaces |
 | 12 | `off` | APRS was switched off while this was waiting |
+| 13 | `invalid` | a value the radio does not accept (a callsign or SSID, 5.9) |
+| 14 | `store` | the radio could not save it |
 
 ### 5.8 Status: `0x0714`  ->  `0x0715`  (no data, no `ts`, read-only)
 
@@ -251,12 +276,39 @@ The frequency is the receive frequency of the main VFO; the "in band" flag check
 repeater channel. Use it with the `DROP:` reasons: `would not transmit: band` says the same thing a `DROP:... band` line would,
 before anything is sent.
 
+### 5.9 Set the callsign and SSID: `0x0716`  ->  `0x0717`
+
+Changes only the callsign and SSID; every other setting is kept (no need to round-trip the 96-byte record with `0x070E`).
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 4 | `ts u32` |
+| 4 | 8 | callsign, ASCII `A-Z 0-9`, 1 to 6 characters, NUL-padded (bytes 10 and 11 of the data must be 0) |
+| 12 | 1 | SSID, 0 to 15 |
+
+Worked example (session timestamp `0x11223344`):
+
+```
+set callsign W1ABC-7       payload 16 07 0d 00 | 44 33 22 11 | "W1ABC" 00 00 00 | 07
+                          wire    ab cd 11 00 00 6b 19 e6 6a a2 2f 51 76 04 94 02 50 03 e9 80 11 be 57 dc ba
+reply, set                payload 17 07 04 00 | 01 00 00 00
+                          wire    ab cd 08 00 01 6b 10 e6 2f 91 0d 40 de ca dc ba
+reply, refused (invalid)  payload 17 07 04 00 | 00 00 00 0d
+                          wire    ab cd 08 00 01 6b 10 e6 2e 91 0d 4d de ca dc ba
+```
+
+Data length is exactly 13. Reply: standard ack (`Ok`, 3 further bytes); **byte 7 is the reason** when `Ok = 0`: `session`, `invalid` (a callsign or SSID the
+radio does not accept: lower case, a character outside `A-Z 0-9`, more than 6 characters, empty, SSID over 15, wrong length) or `store` (the radio could
+not save it). The radio writes flash only when the callsign or SSID changes. The placeholder `N0CALL` is accepted (the radio will not transmit
+with it). The change applies at once; no restart.
+
 ## 6. Receiving: monitor lines
 
 With monitoring on, each decoded frame produces two text lines ending `\r\n`:
 
 ```
 APRSRAW:<hex>        the AX.25 frame without its FCS, upper-case hex, no spaces
+APRSRSSI:<dBm>       the signal strength of that frame (capability bit rssi), e.g. APRSRSSI:-87; right after its APRSRAW line
 APRS:<text>          what the radio shows for it (see below)
 DIGI:<what> <src>    a digipeater decision; ignore for messaging
 ```
@@ -273,6 +325,10 @@ DROP:ack <to>{<seq>} <reason>    an ack was given up; <seq> is the sender's line
 `<to>` is the destination exactly as it went on the air (a callsign-SSID, up to 9 characters), `nn` the two-digit line number from the
 send reply. The closing brace is part of the line; the packet itself has none. A message produces **exactly one** `SENT:` or one `DROP:`.
 Messages given up because APRS was switched off are reported (`off`), one line each. Acks are reported only when dropped, not when sent.
+
+`APRSRSSI:` is written immediately after the `APRSRAW:` line it belongs to, in the same call: nothing comes between them, so you can
+pair them by order. It is the highest reading taken every 10 ms while a packet was arriving; no line is written when no reading was taken.
+Parse `APRSRAW:` as hex up to the line end: the signal strength is a line of its own so that a hex parser is never given extra characters.
 
 Use `APRSRAW:` for matching; the `APRS:` text is for display only (at most 43 characters, non-printables replaced).
 Frame layout: destination (7 bytes), source (7 bytes), 0-8 digipeaters (7 bytes each), control `03`, PID `F0`, information
@@ -335,13 +391,7 @@ not the number of messages you may have waiting.
 | `Ok = 1` but no `SENT:` or `DROP:` ever | monitoring is off, or the line was lost on the port: fall back to a timeout |
 | Text lines in the stream | monitoring is on; parse as in section 3 |
 
-## 10. Not in the firmware yet (planned)
+## 10. Everything requested so far is in the firmware
 
-See `claude/aprs-firmware-request-estimate.md` for the status. Each adds a feature bit to `0x0712` (bits 5-8); do not rely on one until the bit is set.
-
-| Feature | Command / line | Notes |
-|---|---|---|
-| Set callsign / SSID | `0x0716` -> `0x0717` | with `ts`; lets a program assign callsigns from a list |
-| Digipeater path for messages and acks | settings byte 92, menu item | none / `WIDE1-1` / `WIDE1-1,WIDE2-1` (default, as today) |
-| Minimum gap between transmissions | settings byte 93, menu item | 2-10 s, default 5 s |
-| Signal strength per frame | `APRSRSSI:<dBm>` line right after its `APRSRAW:` line | |
+Revision 1 has all of the above. Nothing in the list from `claude/aprs-firmware-request-estimate.md` is outstanding except the request that was
+dropped (setting the frequency from the host: the status command reports it). Not bench-tested on a radio yet.

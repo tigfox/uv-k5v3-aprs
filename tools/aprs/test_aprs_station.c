@@ -356,6 +356,32 @@ static void test_queue(void)
     APRS_StationSetEventSink(sink);
 }
 
+static void test_gap_setting(void)
+{
+    aprs_settings_t s = me();
+    aprs_station_t st;
+    uint8_t seq;
+    APRS_StationInit(&st, &s);
+    CHECK(APRS_StationEnqueue(&st, "K1ABC", "x", true, &seq) == APRS_R_OK);
+    st.quiet = 0;
+    CHECK(APRS_StationTick(&st) == APRS_ACT_MSG);
+    APRS_StationSent(&st, &s, APRS_ACT_MSG);
+    CHECK(st.quiet == APRS_GapSlots(&s) && st.quiet == 10u);                    /* the default, 5 s */
+    s.tx_gap = 4;                                                               /* 2 s */
+    APRS_StationEnqueue(&st, "K1ABC", "y", true, &seq);
+    st.quiet = 0;
+    CHECK(APRS_StationTick(&st) == APRS_ACT_MSG);
+    APRS_StationSent(&st, &s, APRS_ACT_MSG);
+    CHECK(st.quiet == 4u);
+    unsigned slots = 0;                                                         /* two seconds, not five */
+    APRS_StationEnqueue(&st, "K1ABC", "z", true, &seq);
+    while (APRS_StationTick(&st) != APRS_ACT_MSG && slots < 100) slots++;
+    CHECK(slots == 3u);
+    s.tx_gap = 20;                                                              /* 10 s */
+    APRS_StationSent(&st, &s, APRS_ACT_MSG);
+    CHECK(st.quiet == 20u);
+}
+
 static void test_drops(void)
 {
     aprs_settings_t s = me();
@@ -473,7 +499,8 @@ static void test_acks(void)
 int main(void)
 {
     test_rxinfo(); test_beacon_timer(); test_limits(); test_raw(); test_messages();
-    test_queue(); test_drops(); test_acks();
+    test_queue(); test_gap_setting(); test_drops(); test_acks();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;
 }
+

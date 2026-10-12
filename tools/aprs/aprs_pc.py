@@ -4,6 +4,7 @@
   aprs_pc.py <port> status                    version, APRS settings, digipeater counters
   aprs_pc.py <port> msg <TO> <text...>        queue an APRS message (up to 67 characters)
   aprs_pc.py <port> caps                      what this firmware can do (revision, features, queue depth, longest text)
+  aprs_pc.py <port> call <CALL[-SSID]>        set the station callsign and SSID (nothing else changes)
   aprs_pc.py <port> beacon                    queue the station beacon
   aprs_pc.py <port> on | off                  switch APRS on or off
   aprs_pc.py <port> raw <hex>                 transmit a raw AX.25 frame (no FCS); the source must be our callsign
@@ -24,7 +25,9 @@ port is /dev/cu.usbmodem*; the K-plug cable is /dev/cu.usbserial*.
 A site file for `setup set` looks like:
   {"call": "W1ABC", "ssid": 7, "aprs_on": true, "interval_min": 10, "digi": "WIDE", "hops": 2,
    "delay": "250ms", "beacon": "DIGI", "comment": "Ridge digi", "msgto": "", "loc": "",
-   "tone_level": 66, "tone_twist": 0}
+   "tone_level": 66, "tone_twist": 0, "path": "WIDE1-1,WIDE2-1", "gap_s": 5}
+("path" is the digipeater path of messages and acks: "WIDE1-1,WIDE2-1" | "WIDE1-1" | "DIRECT"; "gap_s" the shortest time
+between our transmissions, 2 to 10 seconds in half-second steps.)
 (`loc` is the 15-digit code, or give "lat" and "lon" in degrees instead.)
 """
 import json
@@ -104,6 +107,8 @@ RECORD_SIZE = 96
 DIGI_MODES = ("OFF", "FILL", "WIDE")
 DIGI_DELAYS = ("OFF", "250ms", "500ms", "1s")
 DIGI_BCNTY = ("MOBILE", "DIGI")
+PATHS = ("WIDE1-1,WIDE2-1", "WIDE1-1", "DIRECT")
+GAP_DEFAULT = 10                      # half-seconds
 DIGI_STATS = ("heard", "repeated", "dup", "cancelled", "toomany", "dropped")
 INTERVAL_MIN_S = 60
 TWIST = (-4, 8)
@@ -135,6 +140,8 @@ class Settings:
     msgto: str = ""
     loc: str = ""
     comment: str = ""
+    msg_path: int = 0     # path of messages and acks: 0 WIDE1-1,WIDE2-1 (the default), 1 WIDE1-1, 2 direct
+    tx_gap: int = 0       # shortest gap between our transmissions in half-seconds: 0 = the default (5 s), else 4-20
 
 
 def _text_ok(s, cap, allowed):
@@ -169,10 +176,21 @@ def validate(s: Settings) -> None:
         raise ValueError("delay: OFF | 250ms | 500ms | 1s")
     if s.beacon_type not in (0, 1):
         raise ValueError("beacon: MOBILE | DIGI")
+    if not 0 <= s.msg_path < len(PATHS):
+        raise ValueError("path: " + " | ".join(PATHS))
+    if not (s.tx_gap == 0 or 4 <= s.tx_gap <= 20):
+        raise ValueError("gap_s: 2 to 10 seconds (in steps of half a second)")
     if not LEVEL[0] <= s.tone_level <= LEVEL[1]:
         raise ValueError(f"tone_level: {LEVEL[0]}-{LEVEL[1]}")
     if not TWIST[0] <= s.tone_twist <= TWIST[1]:
         raise ValueError(f"tone_twist: {TWIST[0]} to {TWIST[1]}")
+
+
+def record_crc(r: bytes) -> int:
+    """The record's checksum: bytes 0-89, and bytes 92-93 as well when either is set (so a default record keeps the checksum
+    earlier firmware wrote, and a flip in the new bytes is still caught). app/aprs_settings.c record_crc()."""
+    cover = bytes(r[:90]) + (bytes(r[92:94]) if r[92] or r[93] else b"")
+    return crc16_ccitt_false(cover)
 
 
 def pack_record(s: Settings) -> bytes:
@@ -192,15 +210,17 @@ def pack_record(s: Settings) -> bytes:
     r[20:20 + len(s.msgto)] = s.msgto.encode()
     r[30:30 + len(s.loc)] = s.loc.encode()
     r[46:46 + len(s.comment)] = s.comment.encode()
-    struct.pack_into("<H", r, 90, crc16_ccitt_false(bytes(r[:90])))
+    r[92] = s.msg_path
+    r[93] = s.tx_gap
+    struct.pack_into("<H", r, 90, record_crc(bytes(r)))
     return bytes(r)
 
 
 def unpack_record(r: bytes) -> Settings:
     """Raises ValueError for a record the firmware itself would refuse."""
-    if len(r) != RECORD_SIZE or r[0:4] != b"APR1" or r[4] != 1 or any(r[92:]):
+    if len(r) != RECORD_SIZE or r[0:4] != b"APR1" or r[4] != 1 or any(r[94:]):
         raise ValueError("not an APRS settings record")
-    if struct.unpack_from("<H", r, 90)[0] != crc16_ccitt_false(bytes(r[:90])):
+    if struct.unpack_from("<H", r, 90)[0] != record_crc(bytes(r)):
         raise ValueError("settings record checksum mismatch")
 
     def text(a, b):
@@ -210,7 +230,7 @@ def unpack_record(r: bytes) -> Settings:
     s = Settings(call=text(12, 20), ssid=r[7], aprs_on=bool(r[5]), interval_s=struct.unpack_from("<H", r, 8)[0],
                  digi_mode=d & 3, digi_hops=(d >> 2) & 7, digi_delay=(d >> 5) & 3, beacon_type=d >> 7,
                  tone_level=r[10], tone_twist=struct.unpack_from("<b", r, 11)[0], msgto=text(20, 30),
-                 loc=text(30, 46), comment=text(46, 90))
+                 loc=text(30, 46), comment=text(46, 90), msg_path=r[92], tx_gap=r[93])
     validate(s)
     return s
 
@@ -219,13 +239,14 @@ def settings_to_json(s: Settings) -> dict:
     return {"call": s.call, "ssid": s.ssid, "aprs_on": s.aprs_on, "interval_min": s.interval_s / 60,
             "digi": DIGI_MODES[s.digi_mode], "hops": s.digi_hops, "delay": DIGI_DELAYS[s.digi_delay],
             "beacon": DIGI_BCNTY[s.beacon_type], "comment": s.comment, "msgto": s.msgto, "loc": s.loc,
-            "tone_level": s.tone_level, "tone_twist": s.tone_twist}
+            "tone_level": s.tone_level, "tone_twist": s.tone_twist, "path": PATHS[s.msg_path],
+            "gap_s": (s.tx_gap or GAP_DEFAULT) / 2}
 
 
 def settings_from_json(d: dict, base: Settings = Settings()) -> Settings:
     """Missing keys keep the value in base; ValueError for unknown keys or bad values."""
     known = {"call", "ssid", "aprs_on", "interval_min", "digi", "hops", "delay", "beacon", "comment", "msgto",
-             "loc", "lat", "lon", "tone_level", "tone_twist"}
+             "loc", "lat", "lon", "tone_level", "tone_twist", "path", "gap_s"}
     extra = set(d) - known
     if extra:
         raise ValueError("unknown setting(s): " + ", ".join(sorted(extra)))
@@ -237,6 +258,14 @@ def settings_from_json(d: dict, base: Settings = Settings()) -> Settings:
         if str(d[key]).lower() not in names:
             raise ValueError(f"{name}: " + " | ".join(table))
         return names.index(str(d[key]).lower())
+
+    msg_path = pick(PATHS, "path", "path", base.msg_path)
+    tx_gap = base.tx_gap
+    if "gap_s" in d:
+        half = float(d["gap_s"]) * 2
+        if half != int(half) or not 4 <= half <= 20:
+            raise ValueError("gap_s: 2 to 10 seconds, in steps of half a second")
+        tx_gap = 0 if int(half) == GAP_DEFAULT else int(half)        # 5 s is the default and is stored as 0
 
     loc = d.get("loc", base.loc)
     if "lat" in d or "lon" in d:
@@ -251,7 +280,8 @@ def settings_from_json(d: dict, base: Settings = Settings()) -> Settings:
         digi_delay=pick(DIGI_DELAYS, "delay", "delay", base.digi_delay),
         beacon_type=pick(DIGI_BCNTY, "beacon", "beacon", base.beacon_type),
         tone_level=int(d.get("tone_level", base.tone_level)), tone_twist=int(d.get("tone_twist", base.tone_twist)),
-        msgto=str(d.get("msgto", base.msgto)).upper(), loc=str(loc), comment=str(d.get("comment", base.comment)))
+        msgto=str(d.get("msgto", base.msgto)).upper(), loc=str(loc), comment=str(d.get("comment", base.comment)),
+        msg_path=msg_path, tx_gap=tx_gap)
     validate(s)
     return s
 
@@ -343,11 +373,11 @@ def get_settings(ser) -> Settings:
 
 # why a message was refused or given up: the same numbers as app/aprs_reason.h (the byte after the free places in the reply)
 REASONS = ("", "full", "session", "empty", "toolong", "busy", "nocall", "aprsoff", "band", "battery", "mode", "replaced",
-           "off")
+           "off", "invalid", "store")
 REASON_HELP = {"full": "the radio's queue is full: wait for a SENT line, then send again",
                "session": "the radio did not accept this session: open a new one",
                "empty": "no destination or no text", "toolong": "more than 67 characters"}
-FEATURES = ("send-fields", "events", "acks", "queue")      # bits 0-3 of the capabilities reply
+FEATURES = ("send-fields", "events", "acks", "queue", "status", "set-call", "path", "gap", "rssi", "counters")   # bits 0-9
 
 
 def open_port(port, serial_module):
@@ -392,6 +422,35 @@ def parse_caps(r):
     if r is None or len(r) < 16 or struct.unpack_from("<H", r)[0] != 0x0713 or r[4] != 1:
         return None
     return r[5], struct.unpack_from("<I", r, 8)[0], r[12], r[13], r[14]
+
+
+def parse_call_ssid(text):
+    """("W1ABC", 7) from "w1abc-7" (SSID 0 when there is none), or None if it is not a callsign the radio would take."""
+    call, dash, ssid_text = text.strip().upper().partition("-")
+    if not (1 <= len(call) <= 6 and all(c in UPPER_DIGITS for c in call)):
+        return None
+    if not dash:
+        return call, 0
+    if not (ssid_text.isdigit() and int(ssid_text) <= 15):
+        return None
+    return call, int(ssid_text)
+
+
+def cmd_call(ser, ts, call_ssid):
+    """Set the callsign and SSID only. Checked here before the radio is asked."""
+    parsed = parse_call_ssid(call_ssid)
+    if parsed is None:
+        print(f"not sent: '{call_ssid}' is not a callsign (1-6 letters or digits, then an optional -SSID of 0-15)")
+        return 1
+    call, ssid = parsed
+    send_cmd(ser, 0x0716, struct.pack("<I", ts) + call.encode().ljust(8, b"\x00") + bytes([ssid]))
+    r = read_reply(ser)
+    if ack_ok(r, 0x0717):
+        print(f"callsign set: {call}-{ssid}" if ssid else f"callsign set: {call}")
+        return 0
+    why = REASONS[r[7]] if r is not None and len(r) >= 8 and 0 < r[7] < len(REASONS) else ""
+    print("not set" + (f": {why}" if why else " (an older firmware has no such command)"))
+    return 1
 
 
 def cmd_caps(ser):
@@ -556,6 +615,8 @@ def monitor_line(line: bytes):
         return line[5:].decode(errors="replace")
     if line.startswith(b"APRSRAW:"):
         return "    raw " + line[8:].decode(errors="replace")
+    if line.startswith(b"APRSRSSI:"):
+        return "    rssi " + line[9:].decode(errors="replace") + " dBm"
     if line.startswith(b"DIGI:"):
         return "    digi " + line[5:].decode(errors="replace")
     if line.startswith(b"SENT:"):
@@ -607,6 +668,8 @@ def main(argv=None):
         return cmd_status(ser, version)
     if cmd == "caps":
         return cmd_caps(ser)
+    if cmd == "call" and len(rest) == 1:
+        return cmd_call(ser, ts, rest[0])
     if cmd == "msg" and len(rest) >= 2:
         return cmd_msg(ser, ts, rest[0], " ".join(rest[1:]))
     if cmd == "beacon":

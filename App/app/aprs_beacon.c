@@ -20,18 +20,25 @@
 #include "app/aprs_parse.h"
 #include <string.h>
 
-uint16_t APRS_BuildHeader(uint8_t *frame, const aprs_settings_t *s, bool direct)
+uint16_t APRS_BuildHeaderPath(uint8_t *frame, const aprs_settings_t *s, uint8_t path)
 {
     uint16_t idx = 0;
     AX25_EncodeAddress(APRS_TOCALL, 0, false, &frame[idx]); idx += 7;
-    AX25_EncodeAddress(s->call, s->ssid, direct, &frame[idx]); idx += 7;
-    if (!direct) {
-        AX25_EncodeAddress("WIDE1", 1, false, &frame[idx]); idx += 7;
-        AX25_EncodeAddress("WIDE2", 1, true,  &frame[idx]); idx += 7;
+    AX25_EncodeAddress(s->call, s->ssid, path == APRS_PATH_DIRECT, &frame[idx]); idx += 7;
+    if (path != APRS_PATH_DIRECT) {
+        AX25_EncodeAddress("WIDE1", 1, path == APRS_PATH_WIDE1, &frame[idx]); idx += 7;
+        if (path == APRS_PATH_WIDE12) {
+            AX25_EncodeAddress("WIDE2", 1, true, &frame[idx]); idx += 7;
+        }
     }
     frame[idx++] = 0x03; // Control: UI frame
     frame[idx++] = 0xF0; // PID: no layer 3
     return idx;
+}
+
+uint16_t APRS_BuildHeader(uint8_t *frame, const aprs_settings_t *s, bool direct)
+{
+    return APRS_BuildHeaderPath(frame, s, direct ? APRS_PATH_DIRECT : APRS_PATH_WIDE12);
 }
 
 // micro-degrees -> "DDMM.mm" / "DDDMM.mm"

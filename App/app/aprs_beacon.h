@@ -32,6 +32,9 @@
 // Destination, source and path, control and PID. A MOBILE station asks for WIDE1-1,WIDE2-1;
 // a digipeater beacons direct (source is the last address). Returns the length.
 uint16_t APRS_BuildHeader(uint8_t *frame, const aprs_settings_t *s, bool direct);
+// The same with the path chosen: APRS_PATH_WIDE12 (WIDE1-1,WIDE2-1), APRS_PATH_WIDE1 (WIDE1-1) or APRS_PATH_DIRECT (none; the source
+// is the last address). Messages and acks use the setting; beacons keep the rule above.
+uint16_t APRS_BuildHeaderPath(uint8_t *frame, const aprs_settings_t *s, uint8_t path);
 
 // "!DDMM.mmN/DDDMM.mmE>comment" ('/>' car, '/#' digipeater) for lat/lon in micro-degrees.
 // Returns the frame length (FCS excluded). out must hold APRS_BUILD_MAX bytes.

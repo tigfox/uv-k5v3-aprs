@@ -98,6 +98,42 @@ static void test_status(void)
     CHECK(run(0x0714, NULL, 0, 0) == 4 + 20 && !(reply[5] & 1));
 }
 
+static void test_set_call(void)
+{
+    uint8_t d[4 + 8 + 1];
+    reset();
+    strcpy(cur.comment, "keep me"); cur.interval_s = 600;
+    put32(d, TS);
+    memset(d + 4, 0, 9);
+    memcpy(d + 4, "K1XYZ", 5); d[12] = 9;
+    CHECK(run(0x0716, d, 13, TS) == 8 && rid() == 0x0717 && rsize() == 4 && reply[4] == 1 && reply[7] == APRS_R_OK);
+    CHECK(applied == 1 && strcmp(cur.call, "K1XYZ") == 0 && cur.ssid == 9);
+    CHECK(strcmp(cur.comment, "keep me") == 0 && cur.interval_s == 600);              /* the other settings are as they were */
+    cur.ssid = 9;
+    CHECK(run(0x0716, d, 13, TS) == 8 && reply[4] == 1 && applied == 1);             /* nothing changes: nothing is saved */
+    d[12] = 0;
+    CHECK(run(0x0716, d, 13, TS) == 8 && reply[4] == 1 && applied == 2 && cur.ssid == 0);   /* SSID alone */
+
+    /* refusals, with the reason */
+    CHECK(run(0x0716, d, 13, TS + 1) == 8 && reply[4] == 0 && reply[7] == APRS_R_SESSION && applied == 2);
+    CHECK(run(0x0716, d, 12, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_INVALID);            /* too short */
+    memset(d + 4, 0, 8);
+    CHECK(run(0x0716, d, 13, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_INVALID);            /* no callsign */
+    memcpy(d + 4, "k1xyz", 5);
+    CHECK(run(0x0716, d, 13, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_INVALID);            /* lower case */
+    memcpy(d + 4, "K1X-Z", 5);
+    CHECK(run(0x0716, d, 13, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_INVALID);            /* a character outside A-Z 0-9 */
+    memcpy(d + 4, "K1XYZAB\0", 8);
+    CHECK(run(0x0716, d, 13, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_INVALID);            /* seven characters */
+    memcpy(d + 4, "K1XYZAB", 7); d[11] = 'C';
+    CHECK(run(0x0716, d, 13, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_INVALID);            /* eight: no terminator */
+    memset(d + 4, 0, 8); memcpy(d + 4, "W1ABC", 5); d[12] = 16;
+    CHECK(run(0x0716, d, 13, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_INVALID);            /* SSID 16 */
+    d[12] = 3; apply_fails = true;
+    CHECK(run(0x0716, d, 13, TS) == 8 && reply[4] == 0 && reply[7] == APRS_R_STORE);              /* the radio could not save it */
+    CHECK(strcmp(cur.call, "K1XYZ") == 0);
+}
+
 static void test_capabilities(void)
 {
     reset();
@@ -105,7 +141,9 @@ static void test_capabilities(void)
     CHECK(reply[4] == 1 && reply[5] == APRS_PROTOCOL_REVISION && reply[6] == 0 && reply[7] == 0);
     const uint32_t features = (uint32_t)reply[8] | ((uint32_t)reply[9] << 8) | ((uint32_t)reply[10] << 16) | ((uint32_t)reply[11] << 24);
     CHECK(features == APRS_CAPS_FEATURES && (features & APRS_CAP_SEND_FIELDS) && (features & APRS_CAP_EVENTS));
-    CHECK((features & APRS_CAP_ACKQ) && (features & APRS_CAP_QUEUE) && (features & APRS_CAP_STATUS) && (features & APRS_CAP_COUNTERS));
+    CHECK((features & APRS_CAP_ACKQ) && (features & APRS_CAP_QUEUE) && (features & APRS_CAP_STATUS) && (features & APRS_CAP_COUNTERS) && (features & APRS_CAP_SET_CALL)
+          && (features & APRS_CAP_PATH) && (features & APRS_CAP_GAP) && (features & APRS_CAP_RSSI));
+    CHECK(features == 0x3FFu);                                        /* bits 0-9: everything this revision has */
     CHECK(reply[12] == APRS_MSGQ_DEPTH && reply[13] == APRS_ACKQ_DEPTH && reply[14] == APRS_MSG_TEXT_MAX && reply[15] == 0);
 }
 
@@ -295,7 +333,7 @@ static void test_monitor_and_unknown(void)
 
 int main(void)
 {
-    test_capabilities(); test_status(); test_msg_beacon_on(); test_raw(); test_digi(); test_setup(); test_monitor_and_unknown();
+    test_capabilities(); test_set_call(); test_status(); test_msg_beacon_on(); test_raw(); test_digi(); test_setup(); test_monitor_and_unknown();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;
 }

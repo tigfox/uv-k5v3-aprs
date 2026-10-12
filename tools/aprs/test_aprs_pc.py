@@ -340,7 +340,7 @@ def test_older_firmware_reply_still_works(capsys):
 
 def test_reason_table_matches_the_firmware():
     assert aprs_pc.REASONS == ("", "full", "session", "empty", "toolong", "busy", "nocall", "aprsoff", "band",
-                               "battery", "mode", "replaced", "off")
+                               "battery", "mode", "replaced", "off", "invalid", "store")
 
 
 def test_capabilities_command_and_reply(capsys):
@@ -409,3 +409,83 @@ def test_status_command_asks_without_a_session_and_prints(capsys):
     assert "would not transmit: battery" in out and "channel busy" in out
     assert aprs_pc.cmd_radio_status(FakeRadio([])) == 1                 # an older firmware does not answer
     assert "older firmware" in capsys.readouterr().out
+
+
+def test_set_call_sends_the_call_and_ssid_with_the_session(capsys):
+    radio = FakeRadio([reply(0x0717)])
+    assert aprs_pc.cmd_call(radio, 0x11223344, "w1abc-7") == 0
+    assert radio.commands() == [(0x0716, struct.pack("<I", 0x11223344) + b"W1ABC\x00\x00\x00" + b"\x07")]
+    assert "W1ABC-7" in capsys.readouterr().out
+    radio = FakeRadio([reply(0x0717)])
+    aprs_pc.cmd_call(radio, 1, "K1XYZ")                                     # no SSID means 0
+    assert radio.commands()[0][1][12] == 0
+
+
+def test_set_call_refuses_bad_input_without_asking_the_radio(capsys):
+    for bad in ("", "TOOLONGCALL", "W1ABC-16", "W1ABC-x", "W1-ABC-1", "W1 ABC", "W1ABC-"):
+        radio = FakeRadio([])
+        assert aprs_pc.cmd_call(radio, 1, bad) == 1 and radio.commands() == []
+    assert "callsign" in capsys.readouterr().out
+
+
+def test_set_call_reports_the_radios_reason(capsys):
+    radio = FakeRadio([struct.pack("<HHBBBB", 0x0717, 4, 0, 0, 0, 13)])
+    assert aprs_pc.cmd_call(radio, 1, "W1ABC") == 1
+    assert "invalid" in capsys.readouterr().out
+
+
+# ------------------------------------------------------- path and gap in the settings record ----
+# What the firmware's own encoder (App/app/aprs_settings.c) writes for SAMPLE with path DIRECT and a 6 s gap: the Python and C
+# layouts, and the checksum rule (bytes 92 and 93 are covered only when one of them is set), are pinned to these bytes.
+SAMPLE_PATH_GAP = aprs_pc.Settings(**{**SAMPLE.__dict__, "msg_path": 2, "tx_gap": 12})
+SAMPLE_PATH_GAP_HEX = ("4150523101018a07580242fe57314142430000004e3043414c4c2d3700003133303731323831303539393430350052696467652064"
+                       "696769000000000000000000000000000000000000000000000000000000000000000000007a1f020c0000")
+
+
+def test_record_with_path_and_gap_matches_the_firmware():
+    assert aprs_pc.pack_record(SAMPLE_PATH_GAP).hex() == SAMPLE_PATH_GAP_HEX
+    assert aprs_pc.unpack_record(bytes.fromhex(SAMPLE_PATH_GAP_HEX)) == SAMPLE_PATH_GAP
+    # the defaults still give the record earlier firmware wrote, byte for byte
+    assert aprs_pc.pack_record(SAMPLE).hex() == SAMPLE_HEX
+    assert SAMPLE.msg_path == 0 and SAMPLE.tx_gap == 0
+
+
+def test_record_checksum_catches_a_flip_in_the_new_bytes():
+    good = bytearray(bytes.fromhex(SAMPLE_PATH_GAP_HEX))
+    for i in (92, 93, 90, 91, 94, 95):
+        bad = bytearray(good)
+        bad[i] ^= 0x10
+        with pytest.raises(ValueError):
+            aprs_pc.unpack_record(bytes(bad))
+    plain = bytearray(bytes.fromhex(SAMPLE_HEX))
+    plain[92] = 1                                                   # a default record with a value dropped into the new byte
+    with pytest.raises(ValueError):
+        aprs_pc.unpack_record(bytes(plain))
+
+
+@pytest.mark.parametrize("bad", [dict(msg_path=3), dict(tx_gap=1), dict(tx_gap=3), dict(tx_gap=21)])
+def test_path_and_gap_are_validated(bad):
+    with pytest.raises(ValueError):
+        aprs_pc.validate(aprs_pc.Settings(**{**SAMPLE.__dict__, **bad}))
+    for ok in (dict(msg_path=0), dict(msg_path=2), dict(tx_gap=0), dict(tx_gap=4), dict(tx_gap=20)):
+        aprs_pc.validate(aprs_pc.Settings(**{**SAMPLE.__dict__, **ok}))
+
+
+def test_json_names_for_path_and_gap():
+    d = aprs_pc.settings_to_json(SAMPLE_PATH_GAP)
+    assert d["path"] == "DIRECT" and d["gap_s"] == 6
+    assert aprs_pc.settings_to_json(SAMPLE)["path"] == "WIDE1-1,WIDE2-1" and aprs_pc.settings_to_json(SAMPLE)["gap_s"] == 5
+    assert aprs_pc.settings_from_json(d) == SAMPLE_PATH_GAP
+    s = aprs_pc.settings_from_json({"path": "wide1-1", "gap_s": 2}, SAMPLE)
+    assert s.msg_path == 1 and s.tx_gap == 4
+    s = aprs_pc.settings_from_json({"gap_s": 5}, SAMPLE_PATH_GAP)         # 5 s is the default and is stored as 0
+    assert s.tx_gap == 0 and s.msg_path == 2
+    assert aprs_pc.settings_from_json({"gap_s": 3.5}, SAMPLE).tx_gap == 7
+    for bad in ({"path": "WIDE3-3"}, {"gap_s": 1}, {"gap_s": 11}, {"gap_s": 2.25}):
+        with pytest.raises(ValueError):
+            aprs_pc.settings_from_json(bad, SAMPLE)
+    assert aprs_pc.settings_from_json({}, SAMPLE_PATH_GAP) == SAMPLE_PATH_GAP     # missing keys keep the base values
+
+
+def test_monitor_line_for_signal_strength():
+    assert aprs_pc.monitor_line(b"APRSRSSI:-87") == "    rssi -87 dBm"

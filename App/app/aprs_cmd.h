@@ -35,6 +35,7 @@
  *                                                         Reply: Ok, line number (0 if refused), free queue places, reason code
  *   0x0712 capabilities (no session)              -> 0x0713   revision, feature bits, queue depth, ack depth, longest text
  *   0x0714 status       (no session)              -> 0x0715   battery, frequency, can it transmit and why not, counters
+ *   0x0716 set call [ts u32][call 8][ssid u8]     -> 0x0717   the callsign (A-Z 0-9, 1-6, NUL padded) and SSID 0-15; the rest is kept; byte 7 = reason
  *   0x0702 beacon   [ts u32]                      -> 0x0703   queue the station beacon
  *   0x0706 on/off   [ts u32][on u8]               -> 0x0707
  *   0x0708 raw tx   [ts u32][AX.25 frame, no FCS] -> 0x0709   our own callsign as source only
@@ -45,7 +46,7 @@
  */
 
 #define APRS_CMD_FIRST 0x0700u
-#define APRS_CMD_LAST  0x0714u
+#define APRS_CMD_LAST  0x0716u
 #define APRS_CMD_REPLY_MAX 112u
 
 /* Protocol revision and feature bits of the host API (claude/aprs-messaging-api.md). A host reads them with 0x0712. */
@@ -55,9 +56,13 @@
 #define APRS_CAP_ACKQ          (1u << 2)   /* several acks can wait */
 #define APRS_CAP_QUEUE         (1u << 3)   /* several messages can wait; a full queue refuses */
 #define APRS_CAP_STATUS        (1u << 4)   /* the status command */
-#define APRS_CAP_COUNTERS      (1u << 9)   /* frame counters in the status reply (bits 5-8 are for the requests still to come) */
+#define APRS_CAP_COUNTERS      (1u << 9)   /* frame counters in the status reply (bit 5 is the set callsign command, 6-8 the path, gap and signal strength) */
+#define APRS_CAP_SET_CALL      (1u << 5)   /* the set callsign command */
+#define APRS_CAP_PATH          (1u << 6)   /* the digipeater path setting for messages and acks */
+#define APRS_CAP_GAP           (1u << 7)   /* the setting for the minimum gap between transmissions */
+#define APRS_CAP_RSSI          (1u << 8)   /* APRSRSSI: lines */
 #define APRS_CAPS_FEATURES     (APRS_CAP_SEND_FIELDS | APRS_CAP_EVENTS | APRS_CAP_ACKQ | APRS_CAP_QUEUE | APRS_CAP_STATUS | \
-                                APRS_CAP_COUNTERS)
+                                APRS_CAP_COUNTERS | APRS_CAP_SET_CALL | APRS_CAP_PATH | APRS_CAP_GAP | APRS_CAP_RSSI)
 
 /* What the status command reports; the radio side fills it (aprs_task.c). */
 typedef struct {

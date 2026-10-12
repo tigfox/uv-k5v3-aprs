@@ -43,6 +43,64 @@ static void test_defaults(void)
     strcpy(s.call, "W1AW");     CHECK(APRS_CallIsSet(&s));
 }
 
+static void test_path_and_gap(void)
+{
+    aprs_settings_t d = APRS_SettingsDefaults(), s = sample(), out;
+    uint8_t rd[APRS_RECORD_SIZE], rs[APRS_RECORD_SIZE], buf[APRS_RECORD_SIZE];
+    CHECK(d.msg_path == APRS_PATH_WIDE12 && d.tx_gap == 0 && APRS_PATH_WIDE12 == 0 && APRS_PATH_WIDE1 == 1 && APRS_PATH_DIRECT == 2);
+
+    /* with the defaults the record is what it always was: bytes 92 and 93 are zero and the CRC covers 0..89 only,
+     * so a record saved by an earlier firmware is still good */
+    CHECK(APRS_SettingsEncode(&s, rd) && rd[92] == 0 && rd[93] == 0 && rd[94] == 0 && rd[95] == 0);
+    CHECK(APRS_SettingsDecode(rd, &out) && out.msg_path == 0 && out.tx_gap == 0);
+
+    /* other values go in bytes 92 and 93 and the record round-trips */
+    s.msg_path = APRS_PATH_DIRECT; s.tx_gap = 12;
+    CHECK(APRS_SettingsEncode(&s, rs) && rs[92] == 2 && rs[93] == 12 && rs[94] == 0 && rs[95] == 0);
+    CHECK(memcmp(rd, rs, 90) == 0);                                      /* nothing else moved */
+    CHECK(APRS_SettingsDecode(rs, &out) && out.msg_path == 2 && out.tx_gap == 12 && memcmp(&s, &out, sizeof s) == 0);
+    CHECK(rd[90] != rs[90] || rd[91] != rs[91]);                          /* the CRC covers the two bytes */
+    s.msg_path = APRS_PATH_WIDE1; s.tx_gap = 0;
+    CHECK(APRS_SettingsEncode(&s, rs) && rs[92] == 1 && rs[93] == 0 && APRS_SettingsDecode(rs, &out) && out.msg_path == 1);
+    s.msg_path = 0; s.tx_gap = 4;
+    CHECK(APRS_SettingsEncode(&s, rs) && rs[93] == 4 && APRS_SettingsDecode(rs, &out) && out.tx_gap == 4);
+    s.tx_gap = 20;
+    CHECK(APRS_SettingsEncode(&s, rs) && APRS_SettingsDecode(rs, &out) && out.tx_gap == 20);
+
+    /* any single bit flip anywhere in a record with non-default values is still caught */
+    s.msg_path = APRS_PATH_WIDE1; s.tx_gap = 6;
+    CHECK(APRS_SettingsEncode(&s, rs));
+    for (unsigned i = 0; i < APRS_RECORD_SIZE; i++) {
+        memcpy(buf, rs, sizeof buf);
+        buf[i] ^= 0x10;
+        CHECK(!APRS_SettingsDecode(buf, &out));
+    }
+    /* ... and so is one that turns a default record's zero bytes into values */
+    memcpy(buf, rd, sizeof buf); buf[92] = 1;
+    CHECK(!APRS_SettingsDecode(buf, &out));
+    memcpy(buf, rd, sizeof buf); buf[93] = 10;
+    CHECK(!APRS_SettingsDecode(buf, &out));
+
+    /* validity of the values themselves */
+    s = sample();
+    s.msg_path = 3;   CHECK(!APRS_SettingsValid(&s) && !APRS_SettingsEncode(&s, buf));
+    s = sample(); s.tx_gap = 1;    CHECK(!APRS_SettingsValid(&s));
+    s = sample(); s.tx_gap = 3;    CHECK(!APRS_SettingsValid(&s));
+    s = sample(); s.tx_gap = 21;   CHECK(!APRS_SettingsValid(&s));
+    s = sample(); s.tx_gap = 4;    CHECK(APRS_SettingsValid(&s));
+    s = sample(); s.tx_gap = 20;   CHECK(APRS_SettingsValid(&s));
+    s = sample(); s.tx_gap = 0;    CHECK(APRS_SettingsValid(&s));           /* 0 = the default, 5 s */
+    CHECK(APRS_GapSlots(&s) == 10u);
+    s.tx_gap = 4;  CHECK(APRS_GapSlots(&s) == 4u);
+    s.tx_gap = 20; CHECK(APRS_GapSlots(&s) == 20u);
+
+    /* a record with values outside the range, even with a matching CRC, is refused */
+    s = sample(); s.msg_path = 2; s.tx_gap = 6;
+    CHECK(APRS_SettingsEncode(&s, rs));
+    rs[92] = 7;                                                             /* (the CRC no longer matches either) */
+    CHECK(!APRS_SettingsDecode(rs, &out));
+}
+
 static void test_roundtrip(void)
 {
     aprs_settings_t s = sample(), out;
@@ -126,7 +184,7 @@ static void test_stale_bytes(void)
 int main(void)
 {
     test_stale_bytes();
-    test_defaults(); test_roundtrip(); test_digi_byte(); test_blank_and_corrupt(); test_validation();
+    test_defaults(); test_path_and_gap(); test_roundtrip(); test_digi_byte(); test_blank_and_corrupt(); test_validation();
     printf("%d checks, %d failed\n", checks, fails);
     return fails != 0;
 }

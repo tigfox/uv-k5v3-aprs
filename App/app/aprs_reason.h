@@ -35,7 +35,9 @@ typedef enum {
     APRS_R_BATTERY,     /* battery too low */
     APRS_R_MODE,        /* the TX VFO is not FM */
     APRS_R_REPLACED,    /* a newer message took the slot (reserved: the queue never replaces) */
-    APRS_R_OFF          /* APRS was switched off with this still waiting */
+    APRS_R_OFF,         /* APRS was switched off with this still waiting */
+    APRS_R_INVALID,     /* a value the radio does not accept (a callsign, an SSID) */
+    APRS_R_STORE        /* the radio could not save it */
 } aprs_reason_t;
 
 /* "full", "busy" ... ; "" for OK and for a number that is not a reason. */

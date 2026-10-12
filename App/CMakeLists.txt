@@ -187,6 +187,7 @@ enable_feature(ENABLE_APRS
     app/aprs_modem.c
     app/aprs_digi.c
     app/aprs_lastheard.c
+    app/aprs_monitor.c
     app/aprs_msg.c
     app/aprs_reason.c
     app/aprs_parse.c

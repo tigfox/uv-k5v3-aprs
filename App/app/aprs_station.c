@@ -254,7 +254,7 @@ uint16_t APRS_StationBuild(aprs_station_t *st, const aprs_settings_t *s, aprs_ac
 void APRS_StationSent(aprs_station_t *st, const aprs_settings_t *s, aprs_action_t act)
 {
     st->pending_age = 0;
-    st->quiet = APRS_TX_MIN_GAP_SLOTS;
+    st->quiet = APRS_GapSlots(s);
     switch (act) {
     case APRS_ACT_ACK:
         if (st->a_count)

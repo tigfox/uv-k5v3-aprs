@@ -154,6 +154,23 @@ static void test_items(void)
     CHECK(APRS_ItemGet(&s, APRS_MI_INTV) == 4);
     s = APRS_ItemSet(&s, APRS_MI_INTV, 99);
     CHECK(s.interval_s == 3600);
+    /* the digipeater path and the gap between transmissions */
+    s = APRS_SettingsDefaults();
+    CHECK(APRS_ItemIsChoice(APRS_MI_PATH) && APRS_ItemIsChoice(APRS_MI_GAP));
+    CHECK(APRS_ItemMin(APRS_MI_PATH) == 0 && APRS_ItemMax(APRS_MI_PATH) == 2 && APRS_ItemMax(APRS_MI_GAP) == 6);
+    CHECK(APRS_ItemGet(&s, APRS_MI_PATH) == 0 && APRS_ItemGet(&s, APRS_MI_GAP) == 3);           /* WIDE1-1,WIDE2-1 and 5 s */
+    s = APRS_ItemSet(&s, APRS_MI_PATH, 2);
+    CHECK(s.msg_path == APRS_PATH_DIRECT && APRS_ItemGet(&s, APRS_MI_PATH) == 2);
+    s = APRS_ItemSet(&s, APRS_MI_GAP, 0);
+    CHECK(s.tx_gap == 4 && APRS_ItemGet(&s, APRS_MI_GAP) == 0);                                 /* 2 s */
+    s = APRS_ItemSet(&s, APRS_MI_GAP, 3);
+    CHECK(s.tx_gap == 0 && APRS_ItemGet(&s, APRS_MI_GAP) == 3);                                 /* 5 s is stored as the default */
+    s = APRS_ItemSet(&s, APRS_MI_GAP, 6);
+    CHECK(s.tx_gap == 20 && APRS_ItemGet(&s, APRS_MI_GAP) == 6);
+    s.tx_gap = 14;                                                                              /* set by cable: the nearest choice below */
+    CHECK(APRS_ItemGet(&s, APRS_MI_GAP) == 4);
+    s = APRS_ItemSet(&s, APRS_MI_GAP, 99);
+    CHECK(s.tx_gap == 20);
     const aprs_settings_t before = s;
     const aprs_settings_t same = APRS_ItemSet(&s, APRS_MI_CALL, 3);   /* not a choice: untouched */
     CHECK(memcmp(&before, &same, sizeof s) == 0);

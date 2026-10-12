@@ -20,11 +20,16 @@
 static const uint16_t kInterval[] = { 0, 60, 120, 300, 600, 900, 1800, 3600 };
 #define N_INTERVAL (sizeof kInterval / sizeof kInterval[0])
 
+/* Gap between our transmissions, in half-seconds: 2, 3, 4, 5, 6, 8, 10 s. 5 s (index 3) is stored as 0, the default. */
+static const uint8_t kGap[] = { 4, 6, 8, 10, 12, 16, 20 };
+#define N_GAP (sizeof kGap / sizeof kGap[0])
+#define GAP_DEFAULT_INDEX 3
+
 bool APRS_ItemIsChoice(unsigned item)
 {
     switch (item) {
     case APRS_MI_APRS: case APRS_MI_DIGI: case APRS_MI_DHOPS: case APRS_MI_DDLY:
-    case APRS_MI_BCNTY: case APRS_MI_INTV: case APRS_MI_SSID:
+    case APRS_MI_BCNTY: case APRS_MI_INTV: case APRS_MI_SSID: case APRS_MI_PATH: case APRS_MI_GAP:
         return true;
     default:
         return false;
@@ -45,6 +50,8 @@ int32_t APRS_ItemMax(unsigned item)
     case APRS_MI_DDLY:  return APRS_DIGI_DELAYS - 1;
     case APRS_MI_INTV:  return N_INTERVAL - 1;
     case APRS_MI_SSID:  return 15;
+    case APRS_MI_PATH:  return APRS_PATH_DIRECT;
+    case APRS_MI_GAP:   return N_GAP - 1;
     default:            return 0;
     }
 }
@@ -58,6 +65,15 @@ int32_t APRS_ItemGet(const aprs_settings_t *s, unsigned item)
     case APRS_MI_DDLY:  return s->digi_delay;
     case APRS_MI_BCNTY: return s->beacon_type;
     case APRS_MI_SSID:  return s->ssid;
+    case APRS_MI_PATH:  return s->msg_path;
+    case APRS_MI_GAP: {
+        const uint8_t g = s->tx_gap ? s->tx_gap : kGap[GAP_DEFAULT_INDEX];
+        int32_t best = 0;                      // the nearest choice below, for a value set by cable
+        for (unsigned i = 0; i < N_GAP; i++)
+            if (kGap[i] <= g)
+                best = (int32_t)i;
+        return best;
+    }
     case APRS_MI_INTV: {
         int32_t best = 0;                      // the nearest choice, for a value set by cable
         for (unsigned i = 0; i < N_INTERVAL; i++)
@@ -84,6 +100,8 @@ aprs_settings_t APRS_ItemSet(const aprs_settings_t *s, unsigned item, int32_t se
     case APRS_MI_BCNTY: n.beacon_type = (uint8_t)sel; break;
     case APRS_MI_SSID:  n.ssid = (uint8_t)sel; break;
     case APRS_MI_INTV:  n.interval_s = kInterval[sel]; break;
+    case APRS_MI_PATH:  n.msg_path = (uint8_t)sel; break;
+    case APRS_MI_GAP:   n.tx_gap = sel == GAP_DEFAULT_INDEX ? 0 : kGap[sel]; break;
     default: break;
     }
     return n;

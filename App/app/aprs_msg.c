@@ -33,7 +33,7 @@ _Static_assert(30u + 11u + APRS_MSG_TEXT_MAX + 3u + 2u <= APRS_RAWTX_MAX, "a ful
 static uint16_t build_addressed(uint8_t *out, const aprs_settings_t *s, const char *to,
                                 const char *text, uint8_t text_len)
 {
-    uint16_t idx = APRS_BuildHeader(out, s, false);
+    uint16_t idx = APRS_BuildHeaderPath(out, s, s->msg_path);
     out[idx++] = ':';
     bool end = false;
     for (uint8_t i = 0; i < 9; i++) {

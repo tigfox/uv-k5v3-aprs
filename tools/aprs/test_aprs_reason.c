@@ -14,7 +14,7 @@ static void test_codes(void)
     /* the numbers are a wire format: pinned */
     CHECK(APRS_R_OK == 0 && APRS_R_FULL == 1 && APRS_R_SESSION == 2 && APRS_R_EMPTY == 3 && APRS_R_TOOLONG == 4);
     CHECK(APRS_R_BUSY == 5 && APRS_R_NOCALL == 6 && APRS_R_APRSOFF == 7 && APRS_R_BAND == 8 && APRS_R_BATTERY == 9);
-    CHECK(APRS_R_MODE == 10 && APRS_R_REPLACED == 11 && APRS_R_OFF == 12);
+    CHECK(APRS_R_MODE == 10 && APRS_R_REPLACED == 11 && APRS_R_OFF == 12 && APRS_R_INVALID == 13 && APRS_R_STORE == 14);
     CHECK_STR(APRS_ReasonText(APRS_R_OK), "");
     CHECK_STR(APRS_ReasonText(APRS_R_FULL), "full");
     CHECK_STR(APRS_ReasonText(APRS_R_SESSION), "session");
@@ -28,7 +28,9 @@ static void test_codes(void)
     CHECK_STR(APRS_ReasonText(APRS_R_MODE), "mode");
     CHECK_STR(APRS_ReasonText(APRS_R_REPLACED), "replaced");
     CHECK_STR(APRS_ReasonText(APRS_R_OFF), "off");
-    CHECK_STR(APRS_ReasonText(13), "");                 /* unknown: nothing */
+    CHECK_STR(APRS_ReasonText(APRS_R_INVALID), "invalid");
+    CHECK_STR(APRS_ReasonText(APRS_R_STORE), "store");
+    CHECK_STR(APRS_ReasonText(15), "");                 /* unknown: nothing */
     CHECK_STR(APRS_ReasonText(255), "");
 }
 

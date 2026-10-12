@@ -81,6 +81,8 @@ const t_menu_item MenuList[] =
     {"Send",        MENU_APRS_SEND     },
     {"RdMsg",       MENU_APRS_RDMSG    },
     {"BEACON",      MENU_APRS_BEACON   },
+    {"Path",        MENU_APRS_PATH     },
+    {"Gap",         MENU_APRS_GAP      },
     // RF
     {"Power",       MENU_TXP           },
     {"Sql",         MENU_SQL           },

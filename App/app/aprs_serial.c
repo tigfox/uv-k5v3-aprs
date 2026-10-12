@@ -15,13 +15,11 @@
 
 
 #include "app/aprs_serial.h"
-#include "app/aprs_ax25.h"
+#include "app/aprs_monitor.h"
 #include "app/uart.h"
 #include "driver/vcp.h"
 #include "driver/uart.h"
 #include <string.h>
-
-#define CHUNK 64u
 
 static bool gMon[2];            /* by port: UART, VCP */
 
@@ -66,60 +64,23 @@ static void out(const char *s, uint16_t n)
 #endif
 }
 
-/* a line is sent in chunks so no large buffer is needed */
-typedef struct { char buf[CHUNK]; uint16_t n; } line_t;
-
-static void put(line_t *l, const char *s, uint16_t n)
-{
-    while (n--) {
-        if (l->n == CHUNK) { out(l->buf, l->n); l->n = 0; }
-        l->buf[l->n++] = *s++;
-    }
-}
-
-static void flush(line_t *l)
-{
-    put(l, "\r\n", 2);
-    if (l->n) out(l->buf, l->n);
-    l->n = 0;
-}
-
 void APRS_SerialLine(const char *line)
 {
     if (!APRS_SerialMonitoring())
         return;
-    line_t l = { .n = 0 };
-    put(&l, line, (uint16_t)strlen(line));
-    flush(&l);
+    APRS_MonitorLine(out, line);
 }
 
-void APRS_SerialFrame(const uint8_t *frame, uint16_t len, const char *text)
+void APRS_SerialFrame(const uint8_t *frame, uint16_t len, const char *text, int16_t rssi_dbm)
 {
     if (!APRS_SerialMonitoring())
         return;
-    static const char hex[] = "0123456789ABCDEF";
-    line_t l = { .n = 0 };
-    put(&l, "APRSRAW:", 8);
-    for (uint16_t i = 0; i + 2u < len; i++) {            // drop the 2-byte FCS
-        const char h[2] = { hex[frame[i] >> 4], hex[frame[i] & 15] };
-        put(&l, h, 2);
-    }
-    flush(&l);
-    put(&l, "APRS:", 5);
-    put(&l, text, (uint16_t)strlen(text));
-    flush(&l);
+    APRS_MonitorFrame(out, frame, len, text, rssi_dbm);
 }
 
 void APRS_SerialDigi(const char *what, const uint8_t *frame)
 {
     if (!APRS_SerialMonitoring())
         return;
-    line_t l = { .n = 0 };
-    char src[10];
-    const uint8_t n = AX25_FormatAddress(&frame[7], src);
-    put(&l, "DIGI:", 5);
-    put(&l, what, (uint16_t)strlen(what));
-    put(&l, " ", 1);
-    put(&l, src, n);
-    flush(&l);
+    APRS_MonitorDigi(out, what, frame);
 }
