@@ -1,7 +1,61 @@
 # Estimate: checkin-board firmware requests (2026-10-12) against the APRS firmware
 
 Answers `checkin-board/docs/specs/2026-10-12-uvk5-firmware-requests.md` (requests 0-11). Written 2026-10-12 from the
-source and the build of branch `aprs` at `b1377552`. Sizes are estimates from the code, not measurements; nothing here is built yet.
+source and the build of branch `aprs` at `b1377552`. The estimate below is what was written *before* the work; the status above is current.
+
+## STATUS FOR THE APP TEAM (latest; read this first)
+
+**Built: requests 0-8, 10 and 11 (nine was dropped).** Host-tested and compiled into the APRS firmware; **not yet tried on a radio**. Branch
+`aprs`, commits `74da2b0c` (0-4), `2ff27cb9` (7, 11), `02af7c6e` (5, 6, 8, 10). Not pushed yet. The spec, with worked hex examples to pin
+golden tests on, is `claude/aprs-messaging-api.md` (revision 2, protocol revision 1). The reference client is `tools/aprs/aprs_pc.py`.
+
+| # | Request | State | Where in the spec |
+|---|---|---|---|
+| 0 | Capability flags | **built**: `0x0712`, revision 1, features `0x3ff` (bits 0-9), queue 4, acks 4, text 67 | 5.6 |
+| 1 | Line number in the send reply | **built**: reply bytes `Ok, line, free places, reason` | 5.1 |
+| 2 | SENT / DROP lines with reasons | **built**: `SENT:<to>{nn}`, `DROP:<to>{nn} <reason>`, `DROP:ack <to>{seq} <reason>` | 5.7, 6 |
+| 3 | Several pending acks | **built**: 4, oldest first, deduplicated by sender + number | 8 |
+| 4 | Deeper outgoing queue | **built**: 4; a fifth is refused (`full`), nothing is replaced | 5.1, 8 |
+| 5 | Digipeater path (messages and acks) | **built**: settings byte 92 + menu item **Path** + `"path"` in the settings file | 5.2 |
+| 6 | Gap between transmissions | **built**: settings byte 93 + menu item **Gap** + `"gap_s"`; 2-10 s, default 5 s | 5.2 |
+| 7 | Status command | **built**: `0x0714` (battery, frequency, in band, would transmit and why not, channel busy, monitoring, queue, acks) | 5.8 |
+| 8 | Set callsign and SSID | **built**: `0x0716` | 5.9 |
+| 9 | Set the frequency | dropped (your answer to Q5) | |
+| 10 | Signal strength | **built**: `APRSRSSI:<dBm>` right after its `APRSRAW:` line | 6 |
+| 11 | Frame counters | **built**, in the status reply: decoded, damaged, sent | 5.8 |
+
+**Format decisions you asked about**
+
+- SENT / DROP carry the destination and the line number as on the air. The closing brace is part of the line (`SENT:KD2DCM-1{07}`), as in your request; the packet itself has none.
+  Acks are reported only when **dropped** (`DROP:ack ...`), not when sent. Tell us if you want `SENT:ack` as well.
+- One reason table, numbers pinned (`claude/aprs-messaging-api.md` 5.7): the send reply's byte 7, the DROP lines and the status reply use it. Two codes
+  were added beyond your list: `invalid` (13, a callsign or SSID the radio does not accept) and `store` (14, the radio could not save). `replaced` (11) is
+  defined but never used: nothing is replaced any more.
+- The status reply layout (20 bytes) is in 5.8 with a worked example. "Damaged" is an **approximation**: a packet-shaped burst that failed its checksum
+  and was not decoded by any of the radio's three demodulators; noise can also count.
+- `APRSRSSI:` is the highest reading taken every 10 ms while a packet was arriving, taken only while a host is monitoring; no line when no reading was taken.
+- Settings record bytes 92-93: **your reading of the record is unaffected** (you ignore reserved bytes). Records saved by earlier firmware stay valid.
+  A radio with this firmware keeps working if it is later given a record with those bytes zero; an *older* firmware rejects a record with them set.
+
+**Behaviour that changed, so check your assumptions**
+
+1. A host `msg` no longer touches the radio's on-screen message fields (the menu's MsgTo / Msg): it goes straight into the queue.
+2. A radio with **APRS switched off** now refuses to transmit (reason `aprsoff`); before, a queued message went out anyway.
+3. A packet or ack given up on a busy channel is given up **alone** after 60 s (the next one gets its own minute); before, everything pending was cleared.
+4. A beacon given up on a busy channel no longer stops the automatic beacon timer (it did before).
+5. The replies to `msg` keep the older layout in byte 4; bytes 5-7 are meaningful only when the capability bit `send-fields` is set.
+
+**Resources** (APRS preset): flash 109.09 KiB of 118 (was 106.31 before this work), RAM 14.50 KiB of 16 (was 14.13). Nothing had to be removed. The stack
+gauge (`stk`) has not been read on a radio: the gate in the plan (about 600 bytes free after a long session) is still to be checked. If it fails, the
+agreed order of removal is the scan progress bar, scan-range skip, then (after asking) the K-plug buffers.
+
+**Not verified on a radio**: the queue and the SENT / DROP timing, the menu items Path and Gap, the signal strength line (the reading is taken in the main loop
+every 10 ms while the demodulator says a packet is arriving), the status values (battery, frequency), and the 67-character message on the air. A bench pass
+list is in `claude/aprs-requests-implementation-plan.md`.
+
+**Open questions for you**: none blocking. Two small ones: (1) `SENT:ack` wanted? (2) The `APRSRSSI` reading is a peak, not the level at the end: is that what the link check needs?
+
+---
 
 ## Verdict
 

@@ -1,6 +1,6 @@
 # Implementation plan: checkin-board firmware requests (APRS preset)
 
-Plan only, 2026-10-12. Nothing here is built. Source of requests and answers: `claude/aprs-firmware-request-estimate.md`
+Plan, 2026-10-12. **Built since (phases 1+2 merged, then 3, 4, 5): see `claude/aprs-firmware-request-estimate.md`, STATUS.** Deviations: phases 1 and 2 were done together (the line number and SENT / DROP identity belong to the queue entry); the settings record keeps version 1 and its CRC covers bytes 92-93 only when set (not 'fall back to default'); status layout is the one in the spec (5.8); reason codes 13 and 14 were added; signal strength is a peak taken every 10 ms while monitoring. Source of requests and answers: `claude/aprs-firmware-request-estimate.md`
 (requests 0-11 and the reply from checkin-board). Starting point: branch `aprs` at `186844b2`, flash 106.31 KiB, RAM 14.13 KiB.
 
 ## Decisions taken from checkin-board's answers
