@@ -88,3 +88,53 @@ will build that if I hear nothing. Please reply with the question number and you
 Every change adds a field, a line or a command that older hosts ignore (as the request asks), with one exception: the settings
 record gains a byte (items 5, 6), and the current `aprs_pc.py` rejects it until updated. `claude/aprs-messaging-api.md` gets a new
 revision when the first of these lands.
+
+---
+
+## Reply from checkin-board (2026-10-12)
+
+Thank you: the estimate answers everything we needed. Build at **queue depth 4**; nothing needs removing for it. Answers by
+number, then the two assumptions, then a few notes on formats. checkin-board's plan is in
+`checkin-board/docs/specs/2026-10-12-uvk5-backend-plan.md`.
+
+| # | Answer |
+|---|---|
+| Q1 | **4.** RC1 keeps at most a few batches in flight per checkpoint (default 4), and a 67-character report carries about 5 bibs, so 4 queued messages is enough. |
+| Q2 | Our design burst is **20 bibs a minute for 10 minutes** at one checkpoint (soak and load tests). A mass start at the first checkpoint can reach about **100 runners in 3 minutes (about 33 a minute)**. At about 5 bibs per message that's **about 4-7 messages a minute**, plus a heartbeat every 5 minutes and a few acks: well inside your ~12 transmissions a minute at the 5 s gap. So depth 4 is enough, and the gap setting (6) is a **nicety, not a requirement**: keep 5 s as the default, 2-10 s allowed. |
+| Q3 | **USB-C only.** Race radios connect to the node's Pi by USB-C. Keep the K-plug buffers unless RAM is needed; if it is, they can go **before** the items in Q4. |
+| Q4 | We **use** the **RX/TX log view** and the **K5Viewer screen mirror**: please keep both. The **scan progress bar** and **scan-range skip** aren't used and can go if RAM requires it. |
+| Q5 | **(c) Not needed.** Operators set the frequency on the radio; checkin-board only reads it (request 7) to show it and check the band. Request 9 can be dropped. |
+| Q6 | Moot with Q5. (If 9 is ever built: refuse outside 144-148 and 420-450 MHz, as now.) |
+| Q7 | **Messages and acks only.** Beacons keep their rules. |
+| Q8 | **A separate `APRSRSSI:<dBm>` line is fine**, as long as it comes **immediately after** the `APRSRAW:` line it belongs to, with nothing between them (we pair them by order). If that can't be guaranteed, add a short tag shared by both lines. |
+| Q9 | **After it ends is fine.** We use SENT to know the slot is free and to mark "sent"; 0.8 s doesn't matter. |
+| Q10 | **Reply only** (`Ok = 0`, reason "full"). We never send into a full queue; we track free slots from byte 6. |
+| Q11 | **Revision + feature bits** are enough. We log the version string from the handshake for support. |
+| Q12 | Your order, with one change: **0, 1, 2 + reason codes; then 3, 4; then 7 and 11; then 8; then 5, 10, 6.** We move 8 (set callsign) ahead because `stationsetup` assigns callsigns from the race CSV, and a duplicate callsign-SSID was our first field-test mistake. 9 is dropped (Q5). |
+
+**Assumptions:**
+
+- **HQ sends**: confirmed. An HQ node sends acks, gap requests (`RC1 G ...`) and link-check probes. For now, though, **radios
+  will be used on checkpoints only**, with HQ staying on graywolf until requests 3 and 4 are in and bench-tested. A checkpoint
+  also sends acks (for HQ's gap requests and probes), so 3 and 4 matter there too.
+- **Retries stay in the host**: confirmed. The radio never resends; each retry is a new `0x0700` with a new line number.
+  checkin-board already works that way with graywolf.
+
+**Notes on formats** (please say if any differs from what you'll build):
+
+1. **Capability command `0x0712`**: fine. We'll read it after the handshake. A firmware without it (no reply, or a refusal)
+   counts as revision 0, with only today's behaviour.
+2. **`0x0701` bytes 5-7** (line number, free slots, refusal reason): fine. We'll ignore them unless the capability bits say
+   they're valid, since older firmware sends padding there.
+3. **SENT / DROP lines**: please include the destination and the line number exactly as on the air, e.g.
+   `SENT:KD2DCM-1{07}` and `DROP:KD2DCM-1{07} busy`, so we can match them without guessing. Please also report a DROP for an
+   **ack** given up (e.g. `DROP:ack KD2DCM-1{050} busy`, for an ack of graywolf's message 050), or tell us acks are never dropped silently. A lost ack makes the far
+   station retry, which is the cost we're trying to avoid.
+4. **Reason codes**: one table shared by DROP, the `0x0701` refusal byte and the status command (request 7) would be ideal.
+   Please list the codes in the spec revision.
+5. **Settings record bytes 92-95** (path, gap): checkin-board reads only the fields it needs and ignores the reserved bytes,
+   so the record change doesn't affect us.
+6. **Status command (7)**: please include the received/damaged/sent counters (11) in it rather than a separate command, if
+   that's cheaper.
+7. When the first of these lands, a spec revision with the new byte layouts and a worked example (like section 3's) lets us
+   pin our codec with golden tests, as we did for today's frames.
