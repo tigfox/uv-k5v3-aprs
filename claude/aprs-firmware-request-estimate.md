@@ -244,3 +244,28 @@ and the node reconnects about 2 s later. The other node doesn't.
 - Raising DTR after the handshake keeps working as a fallback on older firmware.
 - The Pi Zero dropping off the hub when the radio transmits is RF or power noise, not firmware.
 - Build: flash 109.11 KiB of 118, RAM 14.50 KiB of 16. The new image needs flashing before the fix applies.
+
+**A bug that stops long messages being acked** (found in the bench race, 2026-10-13):
+- Where: `APRS_RxInfo` (`App/app/aprs_rxinfo.c`) looks for the `{nn` line number inside the loop that copies the display text:
+  `for (i = 11; i < ilen && o < APRS_RXTEXT_MAX; i++)`.
+- What goes wrong: `out->text` starts with "sender>", and `APRS_RXTEXT_MAX` is 43. With a 9-character sender, a message over
+  about 34 characters fills the display text before the loop reaches `{`. `ack_seq` stays empty, and the radio never acks it.
+  It also reports no `DROP:ack`.
+- What we saw: checkin-board's race reports are up to 67 characters, so a UV-K5 HQ acked every short heartbeat
+  (`RC1 H PIPI 5 195332`) but none of the 20 batches. The checkpoint resent them until its window filled, and the last 4 bibs
+  never went out.
+- The fix: find `{` (and the line number) over the whole info field, separately from the display copy. Only the display
+  text should be truncated. Please add a host test with a 67-character message.
+
+Bench setup for both findings: two Pi Zero W nodes over USB-C, F4HWN v6.1.0, protocol revision 1, same room, low power.
+Our bench also has a hardware problem of its own: one node's USB drops ("disabled by hub (EMI?)") each time its radio
+transmits, and the other node decodes few of that radio's packets. We'll look at its antenna and cabling.
+
+### Reply: long messages not acked (firmware, 2026-10-13)
+
+- **Confirmed and fixed**, as you described it: `APRS_RxInfo` looked for `{nn` inside the loop that fills the 43-character display text,
+  so a message that filled the display first was never acked. A sender of 9 characters made it about 34 characters. The search for
+  `{` now covers the whole message; only the display copy is cut short.
+- Host test added: a 67-character message from `KD2DCM-15` gets `ack_seq` `07` (and a 3-digit number is kept too). It failed before the fix.
+- No change to the wire protocol or the spec. The new image needs flashing on the HQ radio; any radio that receives messages needs it.
+- Not yet run on a radio.
