@@ -54,7 +54,7 @@ typedef struct {
 
 #define APRS_EVENT_LINE_MAX 48u
 
-/* "SENT:KD2DCM-1{07}", "DROP:KD2DCM-1{07} busy", "DROP:ack KD2DCM-1{050} busy" (no line ending). Returns the length;
+/* "SENT:KA2AA-1{07}", "DROP:KA2AA-1{07} busy", "DROP:ack KA2AA-1{050} busy" (no line ending). Returns the length;
  * the text is cut to n - 1 characters and always terminated. */
 size_t APRS_EventLine(const aprs_event_t *e, char *out, size_t n);
 

@@ -309,7 +309,7 @@ def test_the_example_site_file_is_valid():
     path = os.path.join(os.path.dirname(__file__), "site.example.json")
     with open(path) as f:
         st = aprs_pc.settings_from_json(json.load(f))
-    assert (st.call, st.ssid, st.aprs_on, st.digi_mode, st.beacon_type) == ("KD2DCM", 1, True, 2, 1)
+    assert (st.call, st.ssid, st.aprs_on, st.digi_mode, st.beacon_type) == ("KA2AA", 1, True, 2, 1)
     aprs_pc.pack_record(st)
 
 
@@ -356,9 +356,9 @@ def test_capabilities_command_and_reply(capsys):
 
 
 def test_monitor_lines_for_sent_and_dropped_messages():
-    assert aprs_pc.monitor_line(b"SENT:KD2DCM-1{07}") == "sent KD2DCM-1{07}"
-    assert aprs_pc.monitor_line(b"DROP:KD2DCM-1{07} busy") == "dropped KD2DCM-1{07} busy"
-    assert aprs_pc.monitor_line(b"DROP:ack KD2DCM-1{050} busy") == "dropped ack KD2DCM-1{050} busy"
+    assert aprs_pc.monitor_line(b"SENT:KA2AA-1{07}") == "sent KA2AA-1{07}"
+    assert aprs_pc.monitor_line(b"DROP:KA2AA-1{07} busy") == "dropped KA2AA-1{07} busy"
+    assert aprs_pc.monitor_line(b"DROP:ack KA2AA-1{050} busy") == "dropped ack KA2AA-1{050} busy"
     assert aprs_pc.monitor_line(b"APRS:hello") == "hello"          # the old lines still work
 
 

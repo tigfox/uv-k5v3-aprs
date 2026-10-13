@@ -76,7 +76,7 @@ static void test_rxinfo(void)
     CHECK_STR(info.from, "N0CALL-3"); CHECK_STR(info.text, "N0CALL-3>hello there"); CHECK_STR(info.ack_seq, "12");
 
     {   /* a 67-character message from a 9-character sender: the display text is cut, the line number is not lost */
-        aprs_settings_t lo = other("KD2DCM", 15);
+        aprs_settings_t lo = other("KA2AA", 15);
         char t[68];
         for (int i = 0; i < 67; i++) t[i] = (char)('a' + i % 26);
         t[67] = 0;

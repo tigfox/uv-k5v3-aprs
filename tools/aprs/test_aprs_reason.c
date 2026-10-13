@@ -48,13 +48,13 @@ static aprs_event_t ev(aprs_event_kind_t k, const char *to, const char *seq, uin
 static void test_lines(void)
 {
     char line[APRS_EVENT_LINE_MAX];
-    aprs_event_t e = ev(APRS_EV_SENT, "KD2DCM-1", "07", 0);
-    CHECK(APRS_EventLine(&e, line, sizeof line) == strlen("SENT:KD2DCM-1{07}"));
-    CHECK_STR(line, "SENT:KD2DCM-1{07}");
-    e = ev(APRS_EV_DROP_MSG, "KD2DCM-1", "07", APRS_R_BUSY);
-    APRS_EventLine(&e, line, sizeof line); CHECK_STR(line, "DROP:KD2DCM-1{07} busy");
-    e = ev(APRS_EV_DROP_ACK, "KD2DCM-1", "050", APRS_R_BUSY);
-    APRS_EventLine(&e, line, sizeof line); CHECK_STR(line, "DROP:ack KD2DCM-1{050} busy");
+    aprs_event_t e = ev(APRS_EV_SENT, "KA2AA-1", "07", 0);
+    CHECK(APRS_EventLine(&e, line, sizeof line) == strlen("SENT:KA2AA-1{07}"));
+    CHECK_STR(line, "SENT:KA2AA-1{07}");
+    e = ev(APRS_EV_DROP_MSG, "KA2AA-1", "07", APRS_R_BUSY);
+    APRS_EventLine(&e, line, sizeof line); CHECK_STR(line, "DROP:KA2AA-1{07} busy");
+    e = ev(APRS_EV_DROP_ACK, "KA2AA-1", "050", APRS_R_BUSY);
+    APRS_EventLine(&e, line, sizeof line); CHECK_STR(line, "DROP:ack KA2AA-1{050} busy");
     e = ev(APRS_EV_DROP_ACK, "N0CALL", "abcde", APRS_R_FULL);
     APRS_EventLine(&e, line, sizeof line); CHECK_STR(line, "DROP:ack N0CALL{abcde} full");
     e = ev(APRS_EV_DROP_MSG, "K1ABC", "99", APRS_R_OFF);
@@ -64,8 +64,8 @@ static void test_lines(void)
     CHECK(APRS_EventLine(&e, line, sizeof line) < APRS_EVENT_LINE_MAX);
     /* a buffer that is too small is cut, never overrun */
     char small[8];
-    e = ev(APRS_EV_SENT, "KD2DCM-1", "07", 0);
-    CHECK(APRS_EventLine(&e, small, sizeof small) == 7 && strcmp(small, "SENT:KD") == 0);
+    e = ev(APRS_EV_SENT, "KA2AA-1", "07", 0);
+    CHECK(APRS_EventLine(&e, small, sizeof small) == 7 && strcmp(small, "SENT:KA") == 0);
 }
 
 int main(void)

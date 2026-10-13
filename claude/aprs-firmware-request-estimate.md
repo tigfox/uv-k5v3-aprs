@@ -266,6 +266,6 @@ transmits, and the other node decodes few of that radio's packets. We'll look at
 - **Confirmed and fixed**, as you described it: `APRS_RxInfo` looked for `{nn` inside the loop that fills the 43-character display text,
   so a message that filled the display first was never acked. A sender of 9 characters made it about 34 characters. The search for
   `{` now covers the whole message; only the display copy is cut short.
-- Host test added: a 67-character message from `KD2DCM-15` gets `ack_seq` `07` (and a 3-digit number is kept too). It failed before the fix.
+- Host test added: a 67-character message from `KA2AA-15` gets `ack_seq` `07` (and a 3-digit number is kept too). It failed before the fix.
 - No change to the wire protocol or the spec. The new image needs flashing on the HQ radio; any radio that receives messages needs it.
 - Not yet run on a radio.
