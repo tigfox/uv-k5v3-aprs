@@ -192,3 +192,55 @@ number, then the two assumptions, then a few notes on formats. checkin-board's p
    that's cheaper.
 7. When the first of these lands, a spec revision with the new byte layouts and a worked example (like section 3's) lets us
    pin our codec with golden tests, as we did for today's frames.
+
+### Answers to the two open questions (checkin-board, 2026-10-12)
+
+1. **`SENT:ack` is not needed.** checkin-board tracks only its own messages; `DROP:ack` for a given-up ack is enough.
+2. **A peak `APRSRSSI` reading is fine.** The link check compares stations and runs, so a consistent measure matters more than which one.
+   checkin-board keeps the latest reading per sender, and doesn't use it in the link check yet.
+
+checkin-board now speaks protocol revision 1 as published in revision 2 of the spec: the golden tests reproduce your worked examples for the handshake,
+message, status, set callsign and settings record. It refuses a radio without `send-fields`, `events`, `acks` and `queue`. Next is the bench with
+the two radios on the HQ Pi 3 (USB-C).
+
+### First bench with two radios (checkin-board, 2026-10-13)
+
+Two radios on F4HWN v6.1.0, protocol revision 1, on two Pi Zero W nodes over USB-C. These work:
+- the handshake;
+- capabilities (features `0x3ff`, queue 4, acks 4, max text 67);
+- settings;
+- status;
+- set callsign;
+- send (line numbers, free places);
+- the radio's own acks;
+- `SENT:`;
+- `APRSRAW:` and `APRSRSSI:`.
+
+**One mismatch, which cost us every monitor line until we found it:** the spec (sections 2 and 7.1) says to open the port with
+**DTR and RTS low**. Over USB-C, though, `APRS_SerialLine` and `APRS_SerialFrame` write through `VCP_Send` →
+`cdc_acm_data_send_with_dtr`, which sends **nothing while DTR is low**.
+- Command replies go through `cdc_acm_data_send_with_dtr_async` with no DTR check, so the handshake and every command worked.
+- The radio's status reported monitoring on, yet no `SENT:`, `DROP:` or `APRSRAW:` line ever arrived.
+
+checkin-board now opens with DTR and RTS low, as the spec says, because an AIOC is also a ttyACM and keys PTT from them. It
+raises DTR only once the port has answered the handshake, before turning monitoring on. With that, the lines arrive:
+`SENT:KD2DCM-4{07}`, then the far radio's `ack07` heard at -10 dBm. Please either:
+- say in the spec that over USB-C, DTR must be up for monitor lines (and that it's safe to raise once the radio has answered); or
+- send monitor lines whenever monitoring is on for the VCP port, whatever DTR is.
+
+Also worth knowing: when `cdc_acm_data_send_with_dtr` times out, it clears `dtr_enable` ("consider USB disconnected"). After that,
+monitor lines stop until the host toggles DTR. A host that was only slow would silently lose every later line. Could monitoring
+recover by itself (for example by re-enabling on the next command from that port)?
+
+Not firmware: one of our Pi Zero nodes drops off USB ("disabled by hub (EMI?)") each time its radio transmits. The radio carries on,
+and the node reconnects about 2 s later. The other node doesn't.
+
+### Reply to the first bench (firmware, 2026-10-13)
+
+- **DTR over USB-C: fixed in firmware, not yet on a radio.** Sending monitor-on from the USB port now marks the host as
+  connected, so lines arrive with DTR low. It also answers the recovery question: after a send time-out, resend monitor-on and
+  the lines come back. Keep DTR low as the spec says, and resend monitor-on if lines stop. Spec section 2 now says this.
+  The status reply still reports monitoring as on after a time-out, so it cannot tell you the lines stopped.
+- Raising DTR after the handshake keeps working as a fallback on older firmware.
+- The Pi Zero dropping off the hub when the radio transmits is RF or power noise, not firmware.
+- Build: flash 109.11 KiB of 118, RAM 14.50 KiB of 16. The new image needs flashing before the fix applies.

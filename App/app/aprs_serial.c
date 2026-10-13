@@ -39,6 +39,12 @@ void APRS_SerialSetMonitor(uint32_t port, bool on)
     const int i = slot(port);
     if (i >= 0)
         gMon[i] = on;
+#if defined(ENABLE_USB)
+    /* a host that asks for monitor lines is reading them, whatever its DTR line says (a send timeout
+     * clears dtr_enable; asking again brings the lines back) */
+    if (on && port == UART_PORT_VCP)
+        dtr_enable = 1;
+#endif
 }
 
 bool APRS_SerialMonitoringPort(uint32_t port)

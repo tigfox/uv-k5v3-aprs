@@ -40,6 +40,10 @@ Consequences for a batch sender are in section 8.
 - **K-plug cable** (and an AIOC wired to it): macOS `/dev/cu.usbserial*` or `/dev/cu.usbmodem*` for an AIOC, Linux `/dev/ttyUSB*`.
   Use **38400 baud, 8N1, no flow control**. Open the port with **DTR and RTS low**: an AIOC keys the radio's PTT from those
   lines.
+- **USB-C and DTR:** command replies always arrive, but **monitor lines** (`APRSRAW:`, `SENT:`, `DROP:`) are sent only while
+  the radio considers the host connected. Firmware before this change needed DTR up for that. Now a monitor-on command (`0x0710`
+  with 1) from the USB port also marks the host as connected, so DTR may stay low. If a send ever times out, the radio stops
+  sending monitor lines until the host sends monitor-on again; a host that sees lines stop should resend it.
 - Only **one program** can hold the port at a time (not UV Studio, CHIRP or a second copy of your app). The radio must be on and
   not in the bootloader.
 - The radio must have a real callsign set (not the placeholder `N0CALL`), APRS switched on, the main VFO inside

@@ -94,6 +94,7 @@ typedef struct
 } cdc_acm_rx_buf_t;
 
 void cdc_acm_init(cdc_acm_rx_buf_t rx_buf);
+extern volatile uint8_t dtr_enable;
 void cdc_acm_data_send_with_dtr(const uint8_t *buf, uint32_t size);
 void cdc_acm_data_send_with_dtr_async(const uint8_t *buf, uint32_t size);
 
